@@ -15,6 +15,7 @@
   --amber-soft: #fff5df;
   --purple: #7752a6;
   --purple-soft: #f4eefd;
+  --stjude-red: #b40043;
   --shadow: 0 18px 60px rgba(23, 33, 48, 0.10);
   --radius: 8px;
   color-scheme: light;
@@ -30,6 +31,7 @@ html {
 
 body {
   margin: 0;
+  padding-bottom: 64px;
   background:
     radial-gradient(circle at 18% 18%, rgba(8, 127, 131, 0.08), transparent 28%),
     radial-gradient(circle at 82% 38%, rgba(255, 78, 66, 0.08), transparent 30%),
@@ -90,6 +92,32 @@ svg {
   font-size: 17px;
 }
 
+.institution-lockup,
+.hero-affiliation,
+.footer-institution {
+  display: inline-flex;
+  align-items: center;
+}
+
+.institution-lockup {
+  gap: 10px;
+  margin-right: auto;
+  padding-left: 22px;
+  border-left: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.institution-lockup img {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(180, 0, 67, 0.20);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .site-nav {
   display: flex;
   align-items: center;
@@ -144,11 +172,47 @@ svg {
   line-height: 1.42;
 }
 
+.hero-affiliation {
+  max-width: 610px;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 12px 14px;
+  border: 1px solid rgba(180, 0, 67, 0.22);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--ink-soft);
+  font-size: 15px;
+  font-weight: 750;
+  box-shadow: 0 8px 30px rgba(9, 17, 31, 0.05);
+}
+
+.hero-affiliation img {
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(180, 0, 67, 0.18);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .hero-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 12px;
   margin-top: 34px;
+}
+
+.hero-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hero-action-label {
+  min-width: 82px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 850;
 }
 
 .button {
@@ -509,14 +573,21 @@ svg {
 }
 
 .site-footer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 26px clamp(20px, 4vw, 72px);
-  background: var(--white);
+  justify-content: center;
+  gap: 20px;
+  min-height: 56px;
+  padding: 10px clamp(20px, 4vw, 72px);
+  background: rgba(255, 255, 255, 0.92);
   border-top: 1px solid var(--line);
   color: var(--ink-soft);
+  backdrop-filter: blur(18px);
 }
 
 .footer-brand {
@@ -525,6 +596,21 @@ svg {
 
 .site-footer p {
   margin: 0;
+}
+
+.footer-institution {
+  justify-content: center;
+  gap: 9px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.footer-institution img {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(180, 0, 67, 0.20);
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .footer-links {
@@ -544,6 +630,12 @@ svg {
     align-items: flex-start;
     flex-direction: column;
     gap: 14px;
+  }
+
+  .institution-lockup {
+    margin-right: 0;
+    padding-left: 0;
+    border-left: 0;
   }
 
   .hero {
@@ -602,6 +694,10 @@ svg {
 }
 
 @media (max-width: 680px) {
+  body {
+    padding-bottom: 176px;
+  }
+
   .site-nav {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -628,6 +724,24 @@ svg {
   .hero-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .hero-action-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .hero-action-label {
+    min-width: 0;
+  }
+
+  .hero-affiliation {
+    align-items: flex-start;
+  }
+
+  .hero-affiliation img {
+    width: 48px;
+    height: 48px;
   }
 
   .button {

@@ -16,6 +16,10 @@
         <span class="brand-mark">RVE<br>Atlas</span>
         <span class="brand-name">Respiratory Virus<br>Evolution Atlas</span>
       </a>
+      <div class="institution-lockup" aria-label="St. Jude Children's Research Hospital group affiliation">
+        <img src="assets/StJude.jpeg" alt="">
+        <span>St. Jude<br>Children's Research Hospital</span>
+      </div>
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#explorers">Explorers</a>
         <a href="#pipelines">Pipelines</a>
@@ -32,17 +36,29 @@
             Interactive explorers and reproducible pipelines for tracking amino acid variation,
             clade evolution, and lineage patterns in key human respiratory viruses.
           </p>
-          <div class="hero-actions" aria-label="Featured project links">
-            <a class="button teal" href="https://leilistjude.shinyapps.io/RSVExplorer/">RSV Explorer</a>
-            <a class="button coral" href="https://leilistjude.shinyapps.io/COVIDExplorer/">COVID Explorer</a>
-            <a class="button violet" href="https://leilistjude.shinyapps.io/FLUExplorer/">FLU Explorer</a>
-            <a class="button amber" href="https://github.com/LeiLi-Uchicago/NextAA">NextAA</a>
-            <a class="button purple" href="https://github.com/LeiLi-Uchicago/FLUAA/">FLUAA</a>
+          <div class="hero-affiliation">
+            <img src="assets/StJude.jpeg" alt="">
+            <span>Developed by Center for Applied Bioinformatics @ St. Jude Children's Research Hospital.</span>
           </div>
+          <div class="hero-actions" aria-label="Featured project links">
+            <div class="hero-action-row">
+              <span class="hero-action-label">Explorers:</span>
+              <a class="button teal" href="#explorers">RSV Explorer</a>
+              <a class="button coral" href="#explorers">COVID Explorer</a>
+              <a class="button violet" href="#explorers">FLU Explorer</a>
+            </div>
+            <div class="hero-action-row">
+              <span class="hero-action-label">Pipelines:</span>
+              <a class="button amber" href="#pipelines">NextAA</a>
+              <a class="button purple" href="#pipelines">FLUAA</a>
+            </div>
+          </div>
+          <!--
           <div class="source-note">
             RSV and COVID data are downloaded from Nextstrain and processed by NextAA.
             Human influenza data are downloaded from GISAID and processed by FLUAA.
           </div>
+        -->
         </div>
         <div class="hero-visual" aria-hidden="true">
           <img src="assets/respiratory-virus-evolution-hero.png" alt="">
@@ -187,16 +203,21 @@
     </main>
 
     <footer class="site-footer">
-      <a class="brand footer-brand" href="#top" aria-label="Respiratory Virus Evolution Atlas home">
+      <!--<a class="brand footer-brand" href="#top" aria-label="Respiratory Virus Evolution Atlas home">
         <span class="brand-mark">RVE<br>Atlas</span>
         <span class="brand-name">Respiratory Virus<br>Evolution Atlas</span>
-      </a>
-      <p>An open research resource for the scientific community.</p>
+      </a>-->
+      <div class="footer-institution" aria-label="St. Jude Children's Research Hospital">
+        <img src="assets/StJude.jpeg" alt="">
+        <p>An open research resource from St. Jude Children's Research Hospital.</p>
+      </div>
+      <!--
       <div class="footer-links">
         <a href="#workflow">Data Workflow</a>
         <a href="https://github.com/LeiLi-Uchicago/NextAA">NextAA</a>
         <a href="https://github.com/LeiLi-Uchicago/FLUAA/">FLUAA</a>
       </div>
+    -->
     </footer>
   </body>
 </html>
