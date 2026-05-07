@@ -5,6 +5,8 @@
   --paper: #fbfcfd;
   --white: #ffffff;
   --line: #dce4ea;
+  --blue: #2563eb;
+  --blue-soft: #eef4ff;
   --teal: #087f83;
   --teal-soft: #e5f6f5;
   --coral: #ff4e42;
@@ -253,6 +255,11 @@ svg {
   color: var(--teal);
 }
 
+.button.blue,
+.accent-blue {
+  color: var(--blue);
+}
+
 .button.coral,
 .accent-coral {
   color: var(--coral);
@@ -348,8 +355,8 @@ svg {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 32px;
 }
 
 .feature-card,
@@ -374,6 +381,24 @@ svg {
 
 .feature-card:nth-child(3) {
   background: linear-gradient(180deg, var(--white), var(--violet-soft));
+}
+
+.feature-card:nth-child(4) {
+  background: linear-gradient(180deg, var(--white), var(--blue-soft));
+}
+
+.universal-card {
+  position: relative;
+}
+
+.universal-card::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -17px;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, rgba(9, 17, 31, 0.32) 10%, rgba(9, 17, 31, 0.32) 90%, transparent);
+  content: "";
 }
 
 .card-icon {
@@ -445,8 +470,17 @@ svg {
   font-weight: 850;
 }
 
+.text-link + .text-link {
+  margin-top: 8px;
+  padding-top: 0;
+}
+
 .accent-teal .card-icon {
   background: var(--teal);
+}
+
+.accent-blue .card-icon {
+  background: var(--blue);
 }
 
 .accent-coral .card-icon {
@@ -570,6 +604,16 @@ svg {
 .about-section p {
   max-width: 850px;
   color: rgba(255, 255, 255, 0.78);
+}
+
+@media (max-width: 1280px) {
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .universal-card::before {
+    display: none;
+  }
 }
 
 .site-footer {
