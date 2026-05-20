@@ -298,6 +298,17 @@ svg {
   box-shadow: 0 8px 30px rgba(9, 17, 31, 0.05);
 }
 
+.source-note a {
+  color: var(--teal);
+  font-weight: 800;
+}
+
+.source-note a:hover,
+.source-note a:focus-visible {
+  color: var(--blue);
+  outline: none;
+}
+
 .hero-visual {
   position: relative;
   min-height: 620px;
@@ -359,6 +370,41 @@ svg {
   gap: 20px 32px;
 }
 
+.explorer-groups {
+  display: grid;
+  gap: 38px;
+}
+
+.explorer-group {
+  display: grid;
+  gap: 18px;
+}
+
+.group-heading {
+  max-width: 720px;
+}
+
+.group-heading h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.12;
+}
+
+.group-heading p {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.pathogen-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.universal-grid {
+  grid-template-columns: minmax(0, 0.64fr);
+}
+
 .feature-card,
 .pipeline-card {
   display: flex;
@@ -371,34 +417,24 @@ svg {
   box-shadow: 0 10px 34px rgba(22, 33, 48, 0.06);
 }
 
-.feature-card:nth-child(1) {
+.feature-card.accent-teal {
   background: linear-gradient(180deg, var(--white), var(--teal-soft));
 }
 
-.feature-card:nth-child(2) {
+.feature-card.accent-coral {
   background: linear-gradient(180deg, var(--white), var(--coral-soft));
 }
 
-.feature-card:nth-child(3) {
+.feature-card.accent-violet {
   background: linear-gradient(180deg, var(--white), var(--violet-soft));
 }
 
-.feature-card:nth-child(4) {
+.feature-card.accent-blue {
   background: linear-gradient(180deg, var(--white), var(--blue-soft));
 }
 
 .universal-card {
   position: relative;
-}
-
-.universal-card::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -17px;
-  width: 2px;
-  background: linear-gradient(180deg, transparent, rgba(9, 17, 31, 0.32) 10%, rgba(9, 17, 31, 0.32) 90%, transparent);
-  content: "";
 }
 
 .card-icon {
@@ -434,6 +470,26 @@ svg {
 .pipeline-card p {
   margin: 10px 0 0;
   color: var(--ink-soft);
+}
+
+.feature-card .data-source {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.feature-card .data-source a {
+  color: currentColor;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.feature-card .data-source a:hover,
+.feature-card .data-source a:focus-visible {
+  color: var(--blue);
+  outline: none;
 }
 
 .feature-card ul,
@@ -611,8 +667,8 @@ svg {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .universal-card::before {
-    display: none;
+  .universal-grid {
+    grid-template-columns: 1fr;
   }
 }
 
