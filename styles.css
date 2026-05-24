@@ -402,7 +402,7 @@ svg {
 }
 
 .universal-grid {
-  grid-template-columns: minmax(0, 0.64fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .feature-card,
@@ -490,6 +490,39 @@ svg {
 .feature-card .data-source a:focus-visible {
   color: var(--blue);
   outline: none;
+}
+
+.explorer-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+  gap: 10px;
+  margin: 18px 0 0;
+  color: var(--ink);
+}
+
+.explorer-stats div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(9, 17, 31, 0.12);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.explorer-stats dt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.explorer-stats dd {
+  margin: 8px 0 0;
+  color: currentColor;
+  font-size: clamp(18px, 1.5vw, 22px);
+  font-weight: 900;
+  line-height: 1.05;
 }
 
 .feature-card ul,
@@ -668,7 +701,7 @@ svg {
   }
 
   .universal-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -852,6 +885,10 @@ svg {
   .feature-card,
   .pipeline-card {
     padding: 22px;
+  }
+
+  .explorer-stats {
+    grid-template-columns: 1fr;
   }
 
   .about-section {
