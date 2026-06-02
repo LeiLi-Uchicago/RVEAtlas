@@ -598,32 +598,32 @@ svg {
 .card-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
   margin-top: auto;
   padding-top: 26px;
 }
 
 .icon-link {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
-  min-height: 44px;
-  padding: 8px 10px;
-  border: 1px solid rgba(9, 17, 31, 0.14);
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1.5px solid currentColor;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.72);
   color: currentColor;
-  font-size: 12px;
-  font-weight: 850;
+  font-size: 14px;
+  font-weight: 900;
   line-height: 1.15;
   transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
 .icon-link svg {
-  width: 30px;
-  height: 30px;
-  padding: 6px;
+  width: 38px;
+  height: 38px;
+  padding: 8px;
   border-radius: 50%;
   background: currentColor;
   fill: none;
