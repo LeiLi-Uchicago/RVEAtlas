@@ -54,6 +54,13 @@ svg {
   display: block;
 }
 
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 .site-header {
   position: sticky;
   top: 0;
@@ -280,6 +287,16 @@ svg {
   color: var(--purple);
 }
 
+.button.agent {
+  color: var(--stjude-red);
+}
+
+.button.agent-light {
+  color: var(--ink);
+  background: var(--white);
+  border-color: var(--white);
+}
+
 .button.ink {
   color: var(--white);
   background: var(--ink);
@@ -350,6 +367,20 @@ svg {
   font-size: clamp(34px, 4.2vw, 58px);
   line-height: 1.02;
   letter-spacing: 0;
+}
+
+#explorers-title {
+  white-space: nowrap;
+}
+
+#explorers .section-heading {
+  max-width: none;
+}
+
+#explorers .section-heading p {
+  max-width: calc(100vw - clamp(40px, 8vw, 144px));
+  font-size: clamp(14px, 1.35vw, 16px);
+  white-space: nowrap;
 }
 
 .section-heading p,
@@ -564,6 +595,52 @@ svg {
   padding-top: 0;
 }
 
+.card-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 26px;
+}
+
+.icon-link {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid rgba(9, 17, 31, 0.14);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+  color: currentColor;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.15;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.icon-link svg {
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  fill: none;
+  stroke: var(--white);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.icon-link:hover,
+.icon-link:focus-visible {
+  background: var(--white);
+  box-shadow: 0 8px 22px rgba(22, 33, 48, 0.10);
+  outline: none;
+  transform: translateY(-1px);
+}
+
 .accent-teal .card-icon {
   background: var(--teal);
 }
@@ -586,6 +663,128 @@ svg {
 
 .accent-purple .card-icon {
   background: var(--purple);
+}
+
+.agent-section {
+  background:
+    linear-gradient(120deg, rgba(180, 0, 67, 0.24), transparent 34%),
+    linear-gradient(270deg, rgba(8, 127, 131, 0.22), transparent 42%),
+    var(--ink);
+  color: var(--white);
+}
+
+.agent-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.62fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: center;
+}
+
+.agent-copy {
+  max-width: 850px;
+}
+
+.agent-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.agent-section h2 {
+  max-width: 760px;
+  margin-top: 18px;
+}
+
+.agent-section p {
+  max-width: 780px;
+  margin: 18px 0 0;
+  color: rgba(255, 255, 255, 0.80);
+  font-size: 18px;
+}
+
+.agent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  margin-top: 30px;
+}
+
+.agent-link {
+  margin-top: 0;
+  padding-top: 0;
+  color: var(--white);
+}
+
+.agent-panel {
+  min-width: 0;
+  padding: clamp(24px, 4vw, 34px);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.10);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18);
+}
+
+.agent-mark {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 2px solid var(--white);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--white);
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.agent-panel h3 {
+  margin: 20px 0 0;
+  color: var(--white);
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.agent-panel .agent-prompt {
+  margin-top: 14px;
+  padding: 16px;
+  border-left: 3px solid var(--coral);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.88);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.agent-panel ul {
+  margin: 20px 0 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.82);
+  list-style: none;
+}
+
+.agent-panel li {
+  position: relative;
+  margin: 9px 0;
+  padding-left: 24px;
+}
+
+.agent-panel li::before {
+  position: absolute;
+  left: 0;
+  color: var(--coral);
+  content: "✓";
+  font-weight: 900;
 }
 
 .pipelines-section {
@@ -705,6 +904,12 @@ svg {
   }
 }
 
+@media (max-width: 980px) {
+  .agent-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .site-footer {
   position: fixed;
   right: 0;
@@ -802,6 +1007,11 @@ svg {
     grid-template-columns: 1fr;
   }
 
+  #explorers .section-heading p {
+    max-width: 100%;
+    white-space: normal;
+  }
+
   .workflow-row {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -829,6 +1039,10 @@ svg {
 @media (max-width: 680px) {
   body {
     padding-bottom: 176px;
+  }
+
+  #explorers-title {
+    white-space: normal;
   }
 
   .site-nav {
@@ -885,6 +1099,10 @@ svg {
   .feature-card,
   .pipeline-card {
     padding: 22px;
+  }
+
+  .card-actions {
+    grid-template-columns: 1fr;
   }
 
   .explorer-stats {

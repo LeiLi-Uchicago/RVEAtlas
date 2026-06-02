@@ -12,6 +12,20 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9S14.5 18.5 12 21M12 3c-2.5 2.5-3.8 5.5-3.8 9s1.3 6.5 3.8 9"></path>
+      </symbol>
+      <symbol id="icon-hospital" viewBox="0 0 24 24">
+        <path d="M4 21V6l8-3l8 3v15"></path>
+        <path d="M9 21v-6h6v6M9 10h6M12 7v6M4 21h16"></path>
+      </symbol>
+      <symbol id="icon-monitor" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="13" rx="2"></rect>
+        <path d="M8 21h8M12 17v4M12 7v6M9 10l3 3l3-3"></path>
+      </symbol>
+    </svg>
     <header class="site-header">
       <a class="brand" href="#top" aria-label="Respiratory Virus Evolution Atlas home">
         <span class="brand-mark">RVE<br>Atlas</span>
@@ -23,6 +37,7 @@
       </div>
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#explorers">Explorers</a>
+        <a href="#agent-skill">AI Setup</a>
         <a href="#pipelines">Pipelines</a>
         <a href="#workflow">Data Workflow</a>
         <a href="#about">About</a>
@@ -54,6 +69,10 @@
               <span class="hero-action-label">Pipelines:</span>
               <a class="button amber" href="#pipelines">NextAA</a>
               <a class="button purple" href="#pipelines">FLUAA</a>
+            </div>
+            <div class="hero-action-row">
+              <span class="hero-action-label">Local setup:</span>
+              <a class="button agent" href="#agent-skill">AI Agent Skill</a>
             </div>
           </div>
 
@@ -110,9 +129,20 @@
                   <li>Mutation patterns over time</li>
                   <li>Sequence and metadata filters</li>
                 </ul>
-                <a class="text-link" href="https://leilistjude.shinyapps.io/RSVExplorer/" target="_blank" rel="noopener noreferrer">Launch Explorer (Public user)</a>
-                <a class="text-link" href="https://ibex.stjude.org/RSVExplorer/" target="_blank" rel="noopener noreferrer">Launch Explorer (St. Jude user)</a>
-                <a class="text-link" href="https://github.com/LeiLi-Uchicago/RSVExplorer" target="_blank" rel="noopener noreferrer">Launch on your own computer</a>
+                <div class="card-actions" aria-label="RSV Explorer launch options">
+                  <a class="icon-link" href="https://leilistjude.shinyapps.io/RSVExplorer/" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-globe"></use></svg>
+                    <span>Public user</span>
+                  </a>
+                  <a class="icon-link" href="https://ibex.stjude.org/RSVExplorer/" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-hospital"></use></svg>
+                    <span>St. Jude user</span>
+                  </a>
+                  <a class="icon-link" href="https://github.com/LeiLi-Uchicago/RSVExplorer" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-monitor"></use></svg>
+                    <span>Run locally</span>
+                  </a>
+                </div>
               </article>
 
               <article class="feature-card accent-coral">
@@ -145,9 +175,20 @@
                   <li>Variant summaries by position</li>
                   <li>Lineage and temporal views</li>
                 </ul>
-                <a class="text-link" href="https://leilistjude.shinyapps.io/COVIDExplorer/" target="_blank" rel="noopener noreferrer">Launch Explorer (Public user)</a>
-                <a class="text-link" href="https://ibex.stjude.org/COVIDExplorer/" target="_blank" rel="noopener noreferrer">Launch Explorer (St. Jude user)</a>
-                <a class="text-link" href="https://github.com/LeiLi-Uchicago/COVIDExplorer" target="_blank" rel="noopener noreferrer">Launch on your own computer</a>
+                <div class="card-actions" aria-label="COVID Explorer launch options">
+                  <a class="icon-link" href="https://leilistjude.shinyapps.io/COVIDExplorer/" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-globe"></use></svg>
+                    <span>Public user</span>
+                  </a>
+                  <a class="icon-link" href="https://ibex.stjude.org/COVIDExplorer/" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-hospital"></use></svg>
+                    <span>St. Jude user</span>
+                  </a>
+                  <a class="icon-link" href="https://github.com/LeiLi-Uchicago/COVIDExplorer" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-monitor"></use></svg>
+                    <span>Run locally</span>
+                  </a>
+                </div>
               </article>
 
               <article class="feature-card accent-violet">
@@ -180,9 +221,20 @@
                   <li>Subtype and clade comparisons</li>
                   <li>Research-ready visual summaries</li>
                 </ul>
-                <a class="text-link" href="https://leilistjude.shinyapps.io/FLUExplorer/" target="_blank" rel="noopener noreferrer">Launch Explorer (Public user)</a>
-                <a class="text-link" href="https://ibex.stjude.org/FLUExplorer/" target="_blank" rel="noopener noreferrer">Launch Explorer (St. Jude user)</a>
-                <a class="text-link" href="https://github.com/LeiLi-Uchicago/FLUExplorer" target="_blank" rel="noopener noreferrer">Launch on your own computer</a>
+                <div class="card-actions" aria-label="FLU Explorer launch options">
+                  <a class="icon-link" href="https://leilistjude.shinyapps.io/FLUExplorer/" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-globe"></use></svg>
+                    <span>Public user</span>
+                  </a>
+                  <a class="icon-link" href="https://ibex.stjude.org/FLUExplorer/" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-hospital"></use></svg>
+                    <span>St. Jude user</span>
+                  </a>
+                  <a class="icon-link" href="https://github.com/LeiLi-Uchicago/FLUExplorer" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-monitor"></use></svg>
+                    <span>Run locally</span>
+                  </a>
+                </div>
               </article>
             </div>
           </div>
@@ -223,11 +275,53 @@
                   <li>Works across Nextclade3-supported pathogens</li>
                   <li>Designed for Nextstrain-available datasets</li>
                 </ul>
-                <a class="text-link" href="https://leilistjude.shinyapps.io/AAExplorer/" target="_blank" rel="noopener noreferrer">Launch Explorer (Public user)</a>
-                <a class="text-link" href="https://ibex.stjude.org/AAExplorer/" target="_blank" rel="noopener noreferrer">Launch Explorer (St. Jude user)</a>
-                <a class="text-link" href="https://github.com/LeiLi-Uchicago/COVIDExplorer" target="_blank" rel="noopener noreferrer">Launch on your own computer</a>
+                <div class="card-actions" aria-label="AAExplorer launch options">
+                  <a class="icon-link" href="https://leilistjude.shinyapps.io/AAExplorer/" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-globe"></use></svg>
+                    <span>Public user</span>
+                  </a>
+                  <a class="icon-link" href="https://ibex.stjude.org/AAExplorer/" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-hospital"></use></svg>
+                    <span>St. Jude user</span>
+                  </a>
+                  <a class="icon-link" href="https://github.com/LeiLi-Uchicago/COVIDExplorer" target="_blank" rel="noopener noreferrer">
+                    <svg aria-hidden="true"><use href="#icon-monitor"></use></svg>
+                    <span>Run locally</span>
+                  </a>
+                </div>
               </article>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section agent-section" id="agent-skill" aria-labelledby="agent-title">
+        <div class="agent-layout">
+          <div class="agent-copy">
+            <span class="agent-kicker">Featured AI Setup Skill</span>
+            <h2 id="agent-title">Install RVE Atlas Apps With an AI Agent</h2>
+            <p>
+              The RVEAtlas Skill helps AI coding agents install and run COVIDExplorer, RSVExplorer,
+              FLUExplorer, and AAExplorer locally. It can preview the setup with a dry run, download
+              app code and release data, install missing R packages, and launch the selected Shiny app
+              in a browser.
+            </p>
+            <div class="agent-actions">
+              <a class="button agent-light" href="https://github.com/LeiLi-Uchicago/RVEAtlas_Skill" target="_blank" rel="noopener noreferrer">View RVEAtlas Skill</a>
+              <a class="text-link agent-link" href="https://github.com/LeiLi-Uchicago/RVEAtlas_Skill#ask-an-ai-agent-to-install-it" target="_blank" rel="noopener noreferrer">Open setup prompts</a>
+            </div>
+          </div>
+          <div class="agent-panel" aria-label="RVEAtlas Skill setup summary">
+            <div class="agent-mark" aria-hidden="true">AI</div>
+            <h3>Ask your coding agent</h3>
+            <p class="agent-prompt">
+              Use the RVEAtlas skill to install and run RSVExplorer locally. Install it into ~/RVEAtlasApps. Start with a dry run, then do the real install if the dry run looks correct.
+            </p>
+            <ul>
+              <li>Supports macOS and Linux</li>
+              <li>Uses R 4.0+, Git, and Python 3</li>
+              <li>Installs one selected Shiny app at a time</li>
+            </ul>
           </div>
         </div>
       </section>
