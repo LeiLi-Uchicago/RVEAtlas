@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 **RVEAtlas** is an interactive Shiny application and companion project website for exploring respiratory virus evolution. The app supports clade-aware amino acid and nucleotide variation analysis across influenza, RSV, SARS-CoV-2, and a universal AAExplorer workflow for compatible NextAA outputs such as CHIKV.
-
+    
 Project website: <https://leili-uchicago.github.io/RVEAtlas/>
 
 AI setup skill: <https://github.com/LeiLi-Uchicago/RVEAtlas_Skill>
