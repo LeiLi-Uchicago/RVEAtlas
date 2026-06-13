@@ -159,7 +159,7 @@ server <- function(input, output, session) {
 
   output$home_welcome_banner <- renderUI({
     src <- paste0("welcome_banner_", pathogen_asset_id(), ".png")
-    img(src = src, style = "max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);")
+    img(src = src, alt = "RVEAtlas selected pathogen welcome banner")
   })
 
   output$app_info_markdown <- renderUI({

@@ -8,12 +8,12 @@ library(bslib)
 rve_theme <- bs_theme(
   version = 5,
   bootswatch = "flatly",
-  primary = "#236fa8",
-  success = "#168f88",
-  info = "#42bfd7",
-  danger = "#d9534f",
-  bg = "#f4f8fb",
-  fg = "#182a3d"
+  primary = "#78C2AD",
+  success = "#78C2AD",
+  info = "#4A9FD8",
+  danger = "#E31B23",
+  bg = "#f5fbfa",
+  fg = "#102033"
 )
 
 rve_card <- function(..., title = NULL, class = "analysis-panel") {
@@ -56,17 +56,18 @@ ui <- navbarPage(
     shinyjs::useShinyjs(),
     tags$style(HTML("
       :root {
-        --rve-navy: #182a3d;
-        --rve-blue: #236fa8;
-        --rve-teal: #168f88;
-        --rve-ink: #263747;
-        --rve-muted: #657482;
-        --rve-bg: #f4f8fb;
+        --rve-navy: #102033;
+        --rve-blue: #004B87;
+        --rve-teal: #78C2AD;
+        --rve-red: #E31B23;
+        --rve-ink: #1d2f42;
+        --rve-muted: #5f6f7f;
+        --rve-bg: #f5fbfa;
         --rve-surface: #ffffff;
-        --rve-surface-soft: #f8fbfd;
-        --rve-border: #dbe5ee;
-        --rve-shadow: 0 8px 22px rgba(24, 42, 61, 0.08);
-        --rve-shadow-soft: 0 3px 12px rgba(24, 42, 61, 0.06);
+        --rve-surface-soft: #f7fbfb;
+        --rve-border: #d8e7e8;
+        --rve-shadow: 0 14px 36px rgba(16, 32, 51, 0.10);
+        --rve-shadow-soft: 0 6px 18px rgba(16, 32, 51, 0.07);
         --rve-radius: 8px;
       }
       html, body {
@@ -76,7 +77,7 @@ ui <- navbarPage(
       }
       body.bslib-page-navbar {
         background:
-          linear-gradient(180deg, rgba(232, 243, 251, 0.88) 0, rgba(244, 248, 251, 0) 220px),
+          linear-gradient(180deg, rgba(120, 194, 173, 0.18) 0, rgba(245, 251, 250, 0) 250px),
           var(--rve-bg);
       }
       @media (min-width: 768px) { 
@@ -101,11 +102,21 @@ ui <- navbarPage(
       }
       .navbar {
         min-height: 76px;
-        background: linear-gradient(135deg, #236fa8 0%, #174f7a 100%);
+        background: var(--rve-teal) !important;
+        background-color: var(--rve-teal) !important;
+        background-image: none !important;
         border: 0;
         border-bottom: 1px solid var(--rve-border);
         box-shadow: 0 2px 16px rgba(24, 42, 61, 0.06);
         padding: 10px 0;
+      }
+      .navbar-default,
+      .navbar-inverse,
+      .navbar.bg-primary,
+      nav.navbar {
+        background: var(--rve-teal) !important;
+        background-color: var(--rve-teal) !important;
+        background-image: none !important;
       }
       .navbar-brand {
         padding-top: 0;
@@ -164,7 +175,7 @@ ui <- navbarPage(
       }
       .navbar .nav-link,
       .navbar .navbar-nav .nav-link {
-        color: rgba(255, 255, 255, 0.82) !important;
+        color: #ffffff !important;
         font-weight: 700;
         border-radius: 6px;
         font-size: 17px;
@@ -172,13 +183,13 @@ ui <- navbarPage(
       .navbar .nav-link:hover,
       .navbar .nav-link:focus {
         color: #ffffff !important;
-        background: rgba(255, 255, 255, 0.12);
+        background: rgba(0, 75, 135, 0.10);
       }
       .navbar .nav-link.active,
       .navbar .navbar-nav .active > .nav-link {
-        color: #ffffff !important;
-        background: rgba(5, 28, 44, 0.28);
-        box-shadow: inset 0 -3px 0 #8ee0d4;
+        color: var(--rve-blue) !important;
+        background: transparent;
+        box-shadow: inset 0 -4px 0 var(--rve-blue);
       }
       .navbar .container-fluid > .navbar-nav {
         order: 2;
@@ -189,29 +200,29 @@ ui <- navbarPage(
       .navbar .container-fluid > .navbar-nav > li > a {
         padding: 11px 13px;
         white-space: nowrap;
-        color: rgba(255, 255, 255, 0.82) !important;
+        color: #ffffff !important;
         font-weight: 700;
         font-size: 17px;
         outline: none;
       }
       .navbar .container-fluid > .navbar-nav > li > a:hover,
       .navbar .container-fluid > .navbar-nav > li > a:focus {
-        background: rgba(255, 255, 255, 0.12);
+        background: rgba(0, 75, 135, 0.10);
         color: #ffffff !important;
       }
       .navbar .container-fluid > .navbar-nav > .active > a,
       .navbar .container-fluid > .navbar-nav > .active > a:hover,
       .navbar .container-fluid > .navbar-nav > .active > a:focus {
-        background: rgba(5, 28, 44, 0.28);
-        color: #ffffff !important;
-        box-shadow: inset 0 -3px 0 #8ee0d4;
+        background: transparent;
+        color: var(--rve-blue) !important;
+        box-shadow: inset 0 -4px 0 var(--rve-blue);
       }
       .navbar .navbar-nav .nav-link.active,
       .navbar .navbar-nav .nav-link.active:hover,
       .navbar .navbar-nav .nav-link.active:focus {
-        background: rgba(5, 28, 44, 0.34) !important;
-        color: #ffffff !important;
-        box-shadow: inset 0 -3px 0 #8ee0d4;
+        background: transparent !important;
+        color: var(--rve-blue) !important;
+        box-shadow: inset 0 -4px 0 var(--rve-blue);
       }
       .tab-content { min-height: calc(100vh - 160px); }
       .tab-content > .tab-pane > .container-fluid {
@@ -649,6 +660,169 @@ ui <- navbarPage(
         color: #5f6c7b;
         font-size: 13px;
       }
+      .home-learn-page {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 28px 12px 42px;
+      }
+      .home-hero {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.28fr) minmax(0, 0.72fr);
+        gap: clamp(24px, 4vw, 54px);
+        align-items: center;
+        padding: clamp(28px, 5vw, 54px);
+        border: 1px solid var(--rve-border);
+        border-radius: 18px;
+        background:
+          linear-gradient(135deg, rgba(120, 194, 173, 0.18), rgba(255, 255, 255, 0) 42%),
+          linear-gradient(315deg, rgba(227, 27, 35, 0.08), rgba(255, 255, 255, 0) 48%),
+          var(--rve-surface);
+        box-shadow: var(--rve-shadow);
+      }
+      .home-hero-logo {
+        display: grid;
+        place-items: center;
+        padding: 22px;
+        border-right: 1px solid var(--rve-border);
+      }
+      .home-hero-logo img {
+        width: min(220px, 100%);
+        height: auto;
+        border-radius: 50%;
+        border: 1px solid rgba(227, 27, 35, 0.18);
+        box-shadow: 0 12px 28px rgba(16, 32, 51, 0.10);
+      }
+      .home-kicker {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: rgba(120, 194, 173, 0.18);
+        color: var(--rve-blue);
+        font-size: 12px;
+        font-weight: 850;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .home-hero h1 {
+        margin: 18px 0 0;
+        color: var(--rve-blue);
+        font-size: clamp(36px, 5vw, 62px);
+        font-weight: 850;
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+      .home-hero .lead {
+        max-width: 840px;
+        margin: 18px 0 0;
+        color: var(--rve-ink);
+        font-size: clamp(18px, 2vw, 22px);
+        line-height: 1.5;
+      }
+      .home-feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 26px;
+      }
+      .home-feature-card {
+        min-height: 100%;
+        padding: 20px;
+        border: 1px solid var(--rve-border);
+        border-radius: 14px;
+        background: var(--rve-surface-soft);
+      }
+      .home-feature-card h4 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        color: var(--rve-blue);
+        font-size: 18px;
+        font-weight: 850;
+      }
+      .home-feature-card h4 .fa,
+      .home-feature-card h4 svg {
+        color: var(--rve-red);
+      }
+      .home-feature-card p {
+        margin: 10px 0 0;
+        color: var(--rve-muted);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      .home-showcase {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 26px;
+        margin-top: 28px;
+      }
+      .home-banner-panel,
+      .home-about-panel {
+        border: 1px solid var(--rve-border);
+        border-radius: 16px;
+        background: var(--rve-surface);
+        box-shadow: var(--rve-shadow-soft);
+        overflow: hidden;
+      }
+      .home-banner-panel {
+        padding: 16px;
+      }
+      .home-banner-panel img {
+        display: block;
+        width: 100%;
+        border-radius: 12px;
+      }
+      .home-about-panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 26px;
+      }
+      .home-about-panel h3 {
+        margin: 0;
+        color: var(--rve-navy);
+        font-size: 26px;
+        font-weight: 850;
+      }
+      .home-about-panel p {
+        margin: 12px 0 0;
+        color: var(--rve-muted);
+        line-height: 1.55;
+      }
+      .home-contact-link {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        gap: 8px;
+        margin-top: 20px;
+        padding: 9px 14px;
+        border: 1.5px solid var(--rve-blue);
+        border-radius: 999px;
+        color: var(--rve-blue);
+        font-weight: 800;
+        text-decoration: none;
+      }
+      .home-contact-link:hover,
+      .home-contact-link:focus {
+        background: var(--rve-blue);
+        color: #ffffff;
+        text-decoration: none;
+        outline: none;
+      }
+      @media (max-width: 980px) {
+        .home-hero {
+          grid-template-columns: 1fr;
+        }
+        .home-hero-logo {
+          border-right: 0;
+          border-bottom: 1px solid var(--rve-border);
+        }
+        .home-feature-grid {
+          grid-template-columns: 1fr;
+        }
+      }
     ")),
     tags$script(HTML("
       window.resizeDatasetBreakdownPlot = function() {
@@ -772,18 +946,53 @@ ui <- navbarPage(
   # ---------------------------------------------------------
   tabPanel("Home", value = "home",
            fluidPage(
-             div(class = "jumbotron",
-                 h1("Welcome to the RVEAtlas Explorer", style = "color: #2c3e50; font-weight: bold;"),
-                 p("A high-resolution visualization tool for analyzing Respiratory Virus genetic diversity across multiple subtypes and lineages.", style = "font-size: 1.2em; color: #7f8c8d;"),
-                 hr(),
-                 div(style = "text-align: center; margin-top: 20px; margin-bottom: 30px;",
-                     uiOutput("home_welcome_banner")
+             div(class = "home-learn-page",
+                 div(class = "home-hero",
+                     div(class = "home-hero-logo",
+                         tags$img(src = "StJude.jpeg", alt = "St. Jude Children's Research Hospital")
+                     ),
+                     div(
+                       span(class = "home-kicker", "Respiratory Virus Evolution Atlas"),
+                       h1("Explore Respiratory Virus Evolution"),
+                       p(
+                         class = "lead",
+                         "RVEAtlas brings together interactive Shiny explorers for scanning amino acid variation, clade dynamics, and lineage patterns across respiratory virus datasets."
+                       ),
+                       div(class = "home-feature-grid",
+                           div(class = "home-feature-card",
+                               h4(icon("chart-bar"), "Single Position"),
+                               p("Inspect amino acid or nucleotide distributions at specific sites within viral genes.")
+                           ),
+                           div(class = "home-feature-card",
+                               h4(icon("not-equal"), "Pairwise Comparison"),
+                               p("Identify robust fixed differences between clades, lineages, or selected groups.")
+                           ),
+                           div(class = "home-feature-card",
+                               h4(icon("globe"), "Gene-Wide Landscapes"),
+                               p("Explore entropy, conservation, and clade-aware summaries across full genes.")
+                           )
+                       )
+                     )
                  ),
-                 h3("How to Use This App:", style = "color: #2980b9;"),
-                 fluidRow(
-                   column(4, h4(icon("chart-bar"), " Single Position Explorer"), p("Dive deep into the amino acid or nucleotide distribution of any specific position within an viral gene.")),
-                   column(4, h4(icon("not-equal"), " Pairwise Comparison"), p("Instantly identify robust, fixed differences between any two genetic clades across all genes.")),
-                   column(4, h4(icon("globe"), " Gene-Wide Landscapes"), p("Explore whole-gene visualizations including Entropy conservation plots and genetic clade dynamics"))
+                 div(class = "home-showcase",
+                     div(class = "home-banner-panel",
+                         uiOutput("home_welcome_banner")
+                     ),
+                     div(class = "home-about-panel",
+                         h3("Designed for Pathogen Evolution Research"),
+                         p(
+                           "Use the global pathogen and subtype controls in the navigation bar to switch datasets, then move through dataset insights, conservation views, single-position exploration, and pairwise comparisons."
+                         ),
+                         p(
+                           "Developed by the Center for Applied Bioinformatics at St. Jude Children's Research Hospital."
+                         ),
+                         tags$a(
+                           class = "home-contact-link",
+                           href = "mailto:lei.li@stjude.org",
+                           icon("envelope"),
+                           "Send Feedback"
+                         )
+                     )
                  )
              )
            )
