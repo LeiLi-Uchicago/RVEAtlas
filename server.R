@@ -171,8 +171,13 @@ server <- function(input, output, session) {
   })
 
   output$app_info_markdown <- renderUI({
-    path <- paste0("APP_INFO_", pathogen_asset_id(), ".md")
-    includeMarkdown(path)
+    pathogen_path <- paste0("APP_INFO_", pathogen_asset_id(), ".md")
+    platform_path <- "APP_INFO_PLATFORM.md"
+    tagList(
+      includeMarkdown(pathogen_path),
+      tags$hr(),
+      includeMarkdown(platform_path)
+    )
   })
   
   observeEvent(input$free_mem, {
