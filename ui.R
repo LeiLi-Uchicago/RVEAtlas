@@ -924,15 +924,16 @@ ui <- navbarPage(
           inputId = "active_pathogen",
           label = NULL,
           choices = pathogen_choices(),
-          selected = "FLU",
+          selected = default_pathogen_choice(),
+          choicesOpt = pathogen_choices_opt(),
           width = "140px"
         ),
         span(class = "switch-label", "Subtype"),
         pickerInput(
           inputId = "global_subtype",
           label = NULL,
-          choices = metadata_groups,
-          selected = metadata_groups[1],
+          choices = pathogen_subtype_choices(default_pathogen_choice()),
+          selected = unname(pathogen_subtype_choices(default_pathogen_choice()))[1],
           width = "108px"
         ),
         div(style = "width: 1px; height: 25px; background: #ced4da;display:None"),

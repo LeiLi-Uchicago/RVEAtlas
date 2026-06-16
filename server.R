@@ -53,7 +53,7 @@ server <- function(input, output, session) {
 
   active_pathogen <- reactive({
     pathogen <- scalar_input(input$active_pathogen) %||% "FLU"
-    if (!pathogen %in% names(PATHOGEN_ADAPTERS)) "FLU" else pathogen
+    if (!pathogen %in% names(PATHOGEN_ADAPTERS) || !pathogen_cache_available(pathogen)) default_pathogen_choice() else pathogen
   })
 
   pending_url_subtype <- reactiveVal(NULL)
@@ -66,9 +66,16 @@ server <- function(input, output, session) {
     value_key <- tolower(trimws(value))
     choices <- pathogen_choices()
     id_match <- names(PATHOGEN_ADAPTERS)[tolower(names(PATHOGEN_ADAPTERS)) == value_key]
-    if (length(id_match) > 0) return(id_match[[1]])
+    if (length(id_match) > 0) {
+      pathogen_id <- id_match[[1]]
+      if (pathogen_cache_available(pathogen_id)) return(pathogen_id)
+      return(NULL)
+    }
     label_match <- unname(choices)[tolower(names(choices)) == value_key]
-    if (length(label_match) > 0) return(label_match[[1]])
+    if (length(label_match) > 0) {
+      pathogen_id <- label_match[[1]]
+      if (pathogen_cache_available(pathogen_id)) return(pathogen_id)
+    }
     NULL
   }
 
@@ -97,7 +104,13 @@ server <- function(input, output, session) {
       choices <- pathogen_subtype_choices(pathogen)
       if (length(choices) == 0) return(invisible(NULL))
       selected <- if (!is.null(subtype) && subtype %in% unname(choices)) subtype else unname(choices)[[1]]
-      updatePickerInput(session, "active_pathogen", selected = pathogen)
+      updatePickerInput(
+        session,
+        "active_pathogen",
+        choices = pathogen_choices(),
+        choicesOpt = pathogen_choices_opt(),
+        selected = pathogen
+      )
       updatePickerInput(session, "global_subtype", choices = choices, selected = selected)
       updateSelectInput(session, "clade_plot_subtype", choices = choices, selected = selected)
       updateTabsetPanel(session, "main_nav", selected = "home")
@@ -109,7 +122,13 @@ server <- function(input, output, session) {
     }
 
     pending_url_subtype(subtype)
-    updatePickerInput(session, "active_pathogen", selected = pathogen)
+    updatePickerInput(
+      session,
+      "active_pathogen",
+      choices = pathogen_choices(),
+      choicesOpt = pathogen_choices_opt(),
+      selected = pathogen
+    )
     session$onFlushed(apply_url_pathogen_selection, once = TRUE)
 
     if (identical(scalar_input(input$active_pathogen), pathogen)) {

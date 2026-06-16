@@ -1272,6 +1272,30 @@ pathogen_choices <- function() {
   stats::setNames(names(PATHOGEN_ADAPTERS), vapply(PATHOGEN_ADAPTERS, `[[`, character(1), "label"))
 }
 
+pathogen_cache_available <- function(pathogen_id) {
+  pathogen_id <- as.character(pathogen_id)
+  if (length(pathogen_id) == 0 || is.na(pathogen_id[[1]]) || identical(pathogen_id[[1]], "")) return(FALSE)
+  cache_dir <- file.path("data", "cache", pathogen_id[[1]])
+  if (!dir.exists(cache_dir)) return(FALSE)
+  cache_files <- list.files(cache_dir, all.files = FALSE, recursive = TRUE, full.names = TRUE, no.. = TRUE)
+  length(cache_files) > 0 && any(file.exists(cache_files) & !dir.exists(cache_files))
+}
+
+available_pathogen_ids <- function() {
+  ids <- names(PATHOGEN_ADAPTERS)
+  ids[vapply(ids, pathogen_cache_available, logical(1))]
+}
+
+default_pathogen_choice <- function() {
+  available <- available_pathogen_ids()
+  if (length(available) > 0) available[[1]] else names(PATHOGEN_ADAPTERS)[[1]]
+}
+
+pathogen_choices_opt <- function() {
+  choices <- pathogen_choices()
+  list(disabled = !vapply(unname(choices), pathogen_cache_available, logical(1)))
+}
+
 pathogen_subtype_choices <- function(pathogen_id = "FLU") {
   if (is.null(pathogen_id) || length(pathogen_id) == 0 || is.na(pathogen_id[[1]]) || identical(pathogen_id[[1]], "")) {
     pathogen_id <- "FLU"
