@@ -292,6 +292,26 @@ ui <- navbarPage(
       .rve-bslib-card > .card-header .analysis-panel-title {
         margin: 0;
       }
+      .rve-table-card > .card-body {
+        overflow-x: auto !important;
+        padding-bottom: 28px;
+      }
+      .rve-table-card .datatables,
+      .rve-table-card .dataTables_wrapper {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        padding-bottom: 10px;
+      }
+      .rve-table-card .dataTables_wrapper::after {
+        content: '';
+        display: block;
+        clear: both;
+      }
+      .rve-table-card table.dataTable {
+        width: 100% !important;
+        margin-bottom: 12px !important;
+      }
       .analysis-panel-title,
       .dashboard-section-title {
         font-size: 17px;
@@ -661,7 +681,8 @@ ui <- navbarPage(
         font-size: 13px;
       }
       .home-learn-page {
-        max-width: 1320px;
+        width: 85vw;
+        max-width: 1800px;
         margin: 0 auto;
         padding: 28px 12px 42px;
       }
@@ -812,6 +833,9 @@ ui <- navbarPage(
         outline: none;
       }
       @media (max-width: 980px) {
+        .home-learn-page {
+          width: 100%;
+        }
         .home-hero {
           grid-template-columns: 1fr;
         }
@@ -960,7 +984,7 @@ ui <- navbarPage(
                        ),
                        div(class = "home-feature-grid",
                            div(class = "home-feature-card",
-                               h4(icon("chart-bar"), "Single Position"),
+                               h4(icon("chart-bar"), "Single Site"),
                                p("Inspect amino acid or nucleotide distributions at specific sites within viral genes.")
                            ),
                            div(class = "home-feature-card",
@@ -981,7 +1005,7 @@ ui <- navbarPage(
                      div(class = "home-about-panel",
                          h3("Designed for Pathogen Evolution Research"),
                          p(
-                           "Use the global pathogen and subtype controls in the navigation bar to switch datasets, then move through dataset insights, conservation views, single-position exploration, and pairwise comparisons."
+                           "Use the global pathogen and subtype controls in the navigation bar to switch datasets, then move through dataset insights, conservation views, single-site exploration, and pairwise comparisons."
                          ),
                          p(
                            "Developed by the Center for Applied Bioinformatics at St. Jude Children's Research Hospital."
@@ -1104,7 +1128,7 @@ ui <- navbarPage(
                         ),
                         div(class = "entropy-discovery-panel",
                             h3("Variable Sites", style = "margin-top: 0; font-weight: bold; color: #2c3e50;"),
-                            p("Click a position to inspect its full distribution in the Single Position Explorer.", style = "color: #5f6c7b; margin-bottom: 8px;"),
+                            p("Click a position to inspect its full distribution in the Single Site Explorer.", style = "color: #5f6c7b; margin-bottom: 8px;"),
                             uiOutput("ent_variable_sites")
                         )
                       )
@@ -1202,6 +1226,7 @@ ui <- navbarPage(
                  12,
                  rve_card(
                      title = "Monthly Detail",
+                     class = "analysis-panel rve-table-card",
                      DTOutput("gc_monthly_table")
                  )
                )
@@ -1212,7 +1237,7 @@ ui <- navbarPage(
   # ---------------------------------------------------------
   # TAB 1: SINGLE POSITION
   # ---------------------------------------------------------
-  tabPanel("Single Position", value = "single_position",
+  tabPanel("Single Site", value = "single_position",
            fluidPage(
              rve_control_card(
                fluidRow(
@@ -1288,6 +1313,7 @@ ui <- navbarPage(
              fluidRow(
                column(12,
                       rve_card(
+                          class = "analysis-panel rve-table-card",
                           uiOutput("sp_position_details"),
                           uiOutput("sp_position_count_info"),
                           div(style = "margin-bottom: 28px;",
@@ -1331,6 +1357,7 @@ ui <- navbarPage(
                column(12,
                       rve_card(
                           title = "Cross-Gene Pairwise Differences",
+                          class = "analysis-panel rve-table-card",
                           p("Click on any highlighted Position to view the full amino acid distribution for that specific site."),
                           DTOutput("pw_diff_table")
                       )

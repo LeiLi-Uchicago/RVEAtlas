@@ -43,6 +43,14 @@ server <- function(input, output, session) {
     if(input$variation_type == "AA") "AA" else "NT"
   })
 
+  ha_numbering_text <- function(subtype, gene, position, is_aa = TRUE, leading_space = FALSE) {
+    pos <- suppressWarnings(as.numeric(position))
+    empty <- rep("", length(pos))
+
+    # HA mature-protein numbering is intentionally hidden until updated mappings are provided.
+    empty
+  }
+
   active_pathogen <- reactive({
     pathogen <- scalar_input(input$active_pathogen) %||% "FLU"
     if (!pathogen %in% names(PATHOGEN_ADAPTERS)) "FLU" else pathogen
@@ -163,8 +171,13 @@ server <- function(input, output, session) {
   })
 
   output$app_info_markdown <- renderUI({
-    path <- paste0("APP_INFO_", pathogen_asset_id(), ".md")
-    includeMarkdown(path)
+    pathogen_path <- paste0("APP_INFO_", pathogen_asset_id(), ".md")
+    platform_path <- "APP_INFO_PLATFORM.md"
+    tagList(
+      includeMarkdown(pathogen_path),
+      tags$hr(),
+      includeMarkdown(platform_path)
+    )
   })
   
   observeEvent(input$free_mem, {
@@ -1216,7 +1229,7 @@ server <- function(input, output, session) {
         `Total Monthly Sequences` = Total,
         `Percent (%)` = round(Percent, 3)
       ) %>%
-      datatable(options = list(pageLength = 12, autoWidth = TRUE), rownames = FALSE)
+      datatable(options = list(pageLength = 12, autoWidth = TRUE, scrollX = TRUE), rownames = FALSE)
   })
   
   # ==========================================
@@ -1828,15 +1841,7 @@ server <- function(input, output, session) {
     # Pre-calculate tooltip text
     data <- data %>%
       mutate(
-        numbering_text = case_when(
-          is_aa & input$sp_gene == "HA" & input$global_subtype == "H3N2" & Position <= 16 ~ " (Signal Peptide)",
-          is_aa & input$sp_gene == "HA" & input$global_subtype == "H3N2" & Position > 16 & Position <= 345 ~ paste0(" (H3 HA1: ", Position - 16, ")"),
-          is_aa & input$sp_gene == "HA" & input$global_subtype == "H3N2" & Position > 345 ~ paste0(" (H3 HA2: ", Position - 345, ")"),
-          is_aa & input$sp_gene == "HA" & input$global_subtype == "H1N1" & Position <= 17 ~ " (Signal Peptide)",
-          is_aa & input$sp_gene == "HA" & input$global_subtype == "H1N1" & Position > 17 & Position <= 344 ~ paste0(" (H1 HA1: ", Position - 17, ")"),
-          is_aa & input$sp_gene == "HA" & input$global_subtype == "H1N1" & Position > 344 ~ paste0(" (H1 HA2: ", Position - 344, ")"),
-          TRUE ~ ""
-        ),
+        numbering_text = ha_numbering_text(input$global_subtype, input$sp_gene, Position, is_aa, leading_space = TRUE),
         tooltip_text = paste0(
           group_col, ": ", !!sym(group_col), 
           "<br>Position: ", Position, numbering_text,
@@ -2067,7 +2072,7 @@ server <- function(input, output, session) {
     
     datatable(
       table_data, 
-      options = list(pageLength = 10, autoWidth = TRUE, order = list()), 
+      options = list(pageLength = 10, autoWidth = TRUE, scrollX = TRUE, order = list()), 
       rownames = FALSE
     ) %>% formatRound("Frequency(%)", digits = 2)
   })
@@ -2123,22 +2128,14 @@ server <- function(input, output, session) {
     if (input$variation_type == "AA" && input$sp_gene == "HA") {
       pos <- selected_position_base()
       req(!is.na(pos))
-      if (input$global_subtype == "H3N2") {
-        if (pos <= 16) {
-          return(span("(Signal Peptide)", style = "margin-left: 10px; color: #7f8c8d; font-style: italic;"))
-        } else if (pos <= 345) {
-          return(span(paste0("(H3 HA1: ", pos - 16, ")"), style = "margin-left: 10px; color: #e74c3c; font-weight: bold;"))
+      numbering <- ha_numbering_text(input$global_subtype, input$sp_gene, pos, TRUE)
+      if (!identical(numbering, "")) {
+        style <- if (identical(numbering, "(Signal Peptide)")) {
+          "margin-left: 10px; color: #7f8c8d; font-style: italic;"
         } else {
-          return(span(paste0("(H3 HA2: ", pos - 345, ")"), style = "margin-left: 10px; color: #e74c3c; font-weight: bold;"))
+          "margin-left: 10px; color: #e74c3c; font-weight: bold;"
         }
-      } else if (input$global_subtype == "H1N1") {
-        if (pos <= 17) {
-          return(span("(Signal Peptide)", style = "margin-left: 10px; color: #7f8c8d; font-style: italic;"))
-        } else if (pos <= 344) {
-          return(span(paste0("(H1 HA1: ", pos - 17, ")"), style = "margin-left: 10px; color: #e74c3c; font-weight: bold;"))
-        } else {
-          return(span(paste0("(H1 HA2: ", pos - 344, ")"), style = "margin-left: 10px; color: #e74c3c; font-weight: bold;"))
-        }
+        return(span(numbering, style = style))
       }
     }
     return(NULL)
@@ -2240,7 +2237,7 @@ server <- function(input, output, session) {
       mutate(Position = sprintf('<a href="#" onclick="Shiny.setInputValue(\'modal_clicked\', \'%s|%s\', {priority: \'event\'});"><strong>%s</strong></a>', Gene, Position, Position)) %>% 
       dplyr::rename(`Group 1 AA` = Clade1_AA, `Group 1 Freq (%)` = Clade1_Freq, `Group 2 AA` = Clade2_AA, `Group 2 Freq (%)` = Clade2_Freq)
     
-    datatable(display_data, escape = FALSE, options = list(pageLength = 15, autoWidth = TRUE), rownames = FALSE) %>% 
+    datatable(display_data, escape = FALSE, options = list(pageLength = 15, autoWidth = TRUE, scrollX = TRUE), rownames = FALSE) %>% 
       formatRound(c("Group 1 Freq (%)", "Group 2 Freq (%)"), digits = 2)
   })
   
@@ -2296,15 +2293,7 @@ server <- function(input, output, session) {
     # Pre-calculate a clean tooltip text to avoid complex logic inside aes()
     res <- res %>%
       mutate(
-        numbering_text = case_when(
-          is_aa & clicked_data_val$gene == "HA" & input$global_subtype == "H3N2" & clicked_data_val$pos <= 16 ~ " (Signal Peptide)",
-          is_aa & clicked_data_val$gene == "HA" & input$global_subtype == "H3N2" & clicked_data_val$pos > 16 & clicked_data_val$pos <= 345 ~ paste0(" (H3 HA1: ", clicked_data_val$pos - 16, ")"),
-          is_aa & clicked_data_val$gene == "HA" & input$global_subtype == "H3N2" & clicked_data_val$pos > 345 ~ paste0(" (H3 HA2: ", clicked_data_val$pos - 345, ")"),
-          is_aa & clicked_data_val$gene == "HA" & input$global_subtype == "H1N1" & clicked_data_val$pos <= 17 ~ " (Signal Peptide)",
-          is_aa & clicked_data_val$gene == "HA" & input$global_subtype == "H1N1" & clicked_data_val$pos > 17 & clicked_data_val$pos <= 344 ~ paste0(" (H1 HA1: ", clicked_data_val$pos - 17, ")"),
-          is_aa & clicked_data_val$gene == "HA" & input$global_subtype == "H1N1" & clicked_data_val$pos > 344 ~ paste0(" (H1 HA2: ", clicked_data_val$pos - 344, ")"),
-          TRUE ~ ""
-        ),
+        numbering_text = ha_numbering_text(input$global_subtype, clicked_data_val$gene, clicked_data_val$pos, is_aa, leading_space = TRUE),
         tooltip_text = as.character(paste0(
           group_col, ": ", Clade, 
           "<br>Position: ", clicked_data_val$pos, numbering_text,
@@ -2753,7 +2742,7 @@ server <- function(input, output, session) {
       type = "button",
       class = paste("ent-site-button", level_class),
       onclick = sprintf("Shiny.setInputValue('ent_site_jump', %s, {priority: 'event'});", payload),
-      title = paste0("Open ", input$ent_gene, " position ", position_label, " in Single Position Explorer"),
+      title = paste0("Open ", input$ent_gene, " position ", position_label, " in Single Site Explorer"),
       span(class = "ent-site-position", position_label),
       span(class = "ent-site-entropy", paste0(round(row$Entropy[[1]], 3), " bits"))
     )

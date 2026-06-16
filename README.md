@@ -18,7 +18,7 @@ AI setup skill: <https://github.com/LeiLi-Uchicago/RVEAtlas_Skill>
 - **COVID Explorer:** SARS-CoV-2 clade-aware amino acid variation.
 - **AAExplorer:** Universal viewer for NextAA outputs from supported Nextclade3/Nextstrain datasets; current website example uses CHIKV.
 
-The Shiny app uses the navbar pathogen and subtype controls to switch between available datasets. Dataset methods and notes are stored in `APP_INFO_FLU.md`, `APP_INFO_RSV.md`, `APP_INFO_COVID.md`, and `APP_INFO_CHIKV.md`.
+The Shiny app uses the navbar pathogen and subtype controls to switch between available datasets. Dataset methods and notes are stored in `APP_INFO_FLU.md`, `APP_INFO_RSV.md`, `APP_INFO_COVID.md`, and `APP_INFO_CHIKV.md`. Shared platform-wide update notes are stored in `APP_INFO_PLATFORM.md` and displayed after each pathogen-specific Methods & Info page.
 
 ## Key Features
 
@@ -201,6 +201,7 @@ http://127.0.0.1:4055
 ├── APP_INFO_COVID.md            # COVID methods, source notes, and app information
 ├── APP_INFO_CHIKV.md            # AAExplorer/CHIKV methods and app information
 ├── APP_INFO_FLU.md              # FLU methods, source notes, and app information
+├── APP_INFO_PLATFORM.md         # Platform-wide update log shown for all pathogens
 ├── APP_INFO_RSV.md              # RSV methods, source notes, and app information
 ├── DEVELOPMENT_LOG.md           # Development history and implementation notes
 ├── README.md                    # Setup and usage guide
