@@ -1245,6 +1245,7 @@ ui <- navbarPage(
                  column(3,
                         h5("Setting", style="font-weight: bold; color: #2980b9;"),
                         selectInput("sp_group_by", "Group by:", choices = NULL),
+                        uiOutput("sp_group_limit_ui"),
                         uiOutput("sp_year_month_range_ui"),
                         checkboxInput("sp_hide_empty_years", "Hide years without records (when Group by Year)", value = TRUE),
                         checkboxInput("sp_show_counts", "Show raw counts instead of percentage", value = FALSE)
@@ -1317,6 +1318,7 @@ ui <- navbarPage(
                           class = "analysis-panel rve-table-card",
                           uiOutput("sp_position_details"),
                           uiOutput("sp_position_count_info"),
+                          uiOutput("sp_group_limit_info"),
                           div(style = "margin-bottom: 28px;",
                               plotlyOutput("sp_overall_aa_bar", height = "120px")
                           ),

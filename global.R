@@ -1910,12 +1910,33 @@ adapter_pairwise_gene_data <- function(subtype, var_type, gene, group_by, clades
   res
 }
 
-adapter_single_position <- function(subtype, var_type, gene, group_by, position, allowed_yms = NULL, min_seqs = 1, hide_empty_years = FALSE) {
+adapter_single_position <- function(subtype, var_type, gene, group_by, position, allowed_yms = NULL, min_seqs = 1, hide_empty_years = FALSE, top_n_groups = NULL) {
   cfg <- adapter_config(subtype)
   if (is.null(cfg)) return(data.frame())
   raw_subtype <- adapter_subtype_value(subtype)
   pos_filter <- adapter_position_filter(cfg, position)
   if (identical(cfg$schema, "covid")) {
+    clade_filter <- ""
+    top_n_groups <- suppressWarnings(as.integer(top_n_groups))
+    if (length(top_n_groups) == 1 && !is.na(top_n_groups) && top_n_groups > 0 &&
+        length(group_by) == 1 && group_by %in% names(ADAPTER_DISPLAY_GROUP_LIMITS)) {
+      top_groups <- adapter_query(
+        cfg,
+        paste0(
+          "SELECT GroupValue
+           FROM usage
+           WHERE Protein = ? AND GroupType = ? AND ", pos_filter$sql, "
+             AND AA NOT IN ('X', '-') AND GroupValue IS NOT NULL AND GroupValue <> ''
+           GROUP BY GroupValue
+           ORDER BY SUM(Count) DESC, GroupValue
+           LIMIT ?"
+        ),
+        list(gene, group_by, pos_filter$value, top_n_groups)
+      )
+      top_values <- if (is.null(top_groups) || nrow(top_groups) == 0) character(0) else as.character(top_groups$GroupValue)
+      in_values <- adapter_sql_in_values(cfg, top_values)
+      if (!is.null(in_values)) clade_filter <- paste0(" AND GroupValue IN (", in_values, ")")
+    }
     data <- adapter_query(
       cfg,
       paste0(
@@ -1923,7 +1944,9 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
                 PositionBase AS Position, COALESCE(PositionLabel, CAST(PositionBase AS VARCHAR)) AS Position_Label,
                 Position AS Position_Key, AA AS AminoAcid, SUM(Count) AS Count, ANY_VALUE(Codon) AS Codon_Usage
          FROM usage
-         WHERE Protein = ? AND GroupType = ? AND ", pos_filter$sql, " AND AA NOT IN ('X', '-')
+         WHERE Protein = ? AND GroupType = ? AND ", pos_filter$sql, " AND AA NOT IN ('X', '-')",
+        clade_filter,
+        "
          GROUP BY Protein, GroupValue, PositionBase, PositionLabel, Position, AA"
       ),
       list(gene, group_by, pos_filter$value)
@@ -1996,6 +2019,54 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
     rename(!!group_by := Clade)
   if (group_by == "Year" && isTRUE(hide_empty_years)) out <- out %>% filter(.data$Valid_Total > 0)
   out
+}
+
+adapter_group_limit_summary <- function(subtype, var_type, gene, group_by, position, top_n_groups = NULL) {
+  if (!identical(var_type, "AA")) return(NULL)
+  cfg <- adapter_config(subtype)
+  if (is.null(cfg) || !identical(cfg$schema, "covid")) return(NULL)
+  if (length(group_by) != 1 || !group_by %in% names(ADAPTER_DISPLAY_GROUP_LIMITS)) return(NULL)
+  top_n_groups <- suppressWarnings(as.integer(top_n_groups))
+  if (length(top_n_groups) != 1 || is.na(top_n_groups) || top_n_groups <= 0) return(NULL)
+
+  pos_filter <- adapter_position_filter(cfg, position)
+  res <- adapter_query(
+    cfg,
+    paste0(
+      "WITH group_totals AS (
+         SELECT GroupValue, SUM(Count) AS Group_Count
+         FROM usage
+         WHERE Protein = ? AND GroupType = ? AND ", pos_filter$sql, "
+           AND AA NOT IN ('X', '-') AND GroupValue IS NOT NULL AND GroupValue <> ''
+         GROUP BY GroupValue
+       ),
+       ranked AS (
+         SELECT GroupValue, Group_Count,
+                ROW_NUMBER() OVER (ORDER BY Group_Count DESC, GroupValue) AS Rank
+         FROM group_totals
+       )
+       SELECT
+         COUNT(*) AS total_levels,
+         COALESCE(SUM(Group_Count), 0) AS total_count,
+         COALESCE(SUM(CASE WHEN Rank <= ? THEN Group_Count ELSE 0 END), 0) AS top_count,
+         COALESCE(SUM(CASE WHEN Rank <= ? THEN 1 ELSE 0 END), 0) AS shown_levels
+       FROM ranked"
+    ),
+    list(gene, group_by, pos_filter$value, top_n_groups, top_n_groups)
+  )
+  if (is.null(res) || nrow(res) == 0) return(NULL)
+  total_count <- as.numeric(res$total_count[[1]])
+  top_count <- as.numeric(res$top_count[[1]])
+  data.frame(
+    group_by = as.character(group_by),
+    top_n = top_n_groups,
+    total_levels = as.integer(res$total_levels[[1]]),
+    shown_levels = as.integer(res$shown_levels[[1]]),
+    top_count = top_count,
+    total_count = total_count,
+    percentage = if (!is.na(total_count) && total_count > 0) (top_count / total_count) * 100 else NA_real_,
+    stringsAsFactors = FALSE
+  )
 }
 
 adapter_pairwise_differences_for_gene <- function(subtype, var_type, gene, group_by, clade1, clade2, min_freq) {
@@ -2080,13 +2151,18 @@ usage_position_choices <- function(subtype, var_type, gene) {
   if (is_flu_subtype(subtype)) flu_position_choices(subtype, var_type, gene) else adapter_position_choices(subtype, var_type, gene)
 }
 
-usage_single_position <- function(subtype, var_type, gene, group_by, position, allowed_yms = NULL, min_seqs = 1, hide_empty_years = FALSE) {
+usage_single_position <- function(subtype, var_type, gene, group_by, position, allowed_yms = NULL, min_seqs = 1, hide_empty_years = FALSE, top_n_groups = NULL) {
   if (missing_subtype(subtype)) return(data.frame())
   if (is_flu_subtype(subtype)) {
     flu_usage_single_position(subtype, var_type, gene, group_by, position, allowed_yms, min_seqs, hide_empty_years)
   } else {
-    adapter_single_position(subtype, var_type, gene, group_by, position, allowed_yms, min_seqs, hide_empty_years)
+    adapter_single_position(subtype, var_type, gene, group_by, position, allowed_yms, min_seqs, hide_empty_years, top_n_groups)
   }
+}
+
+usage_group_limit_summary <- function(subtype, var_type, gene, group_by, position, top_n_groups = NULL) {
+  if (missing_subtype(subtype) || is_flu_subtype(subtype)) return(NULL)
+  adapter_group_limit_summary(subtype, var_type, gene, group_by, position, top_n_groups)
 }
 
 usage_pairwise_gene_data <- function(subtype, var_type, gene, group_by, clades = NULL) {

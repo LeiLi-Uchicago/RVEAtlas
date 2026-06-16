@@ -516,6 +516,29 @@ server <- function(input, output, session) {
     selected
   }
 
+  sp_group_limit_active <- reactive({
+    identical(input$global_subtype, "COVID:SARS-CoV-2") &&
+      identical(input$variation_type, "AA") &&
+      identical(input$sp_group_by, "Nextclade_pango")
+  })
+
+  output$sp_group_limit_ui <- renderUI({
+    if (!isTRUE(sp_group_limit_active())) return(NULL)
+    choices <- c("Top 25" = 25, "Top 50" = 50, "Top 75" = 75, "Top 100" = 100)
+    selected <- if (!is.null(input$sp_top_n_groups) && input$sp_top_n_groups %in% unname(choices)) {
+      input$sp_top_n_groups
+    } else {
+      25
+    }
+    selectInput("sp_top_n_groups", "Show Nextclade pango:", choices = choices, selected = selected)
+  })
+
+  sp_top_n_groups <- reactive({
+    if (!isTRUE(sp_group_limit_active())) return(NULL)
+    selected <- suppressWarnings(as.integer(input$sp_top_n_groups))
+    if (length(selected) != 1 || is.na(selected) || !selected %in% c(25L, 50L, 75L, 100L)) 25L else selected
+  })
+
   every_nth_value <- function(values, n = 6) {
     values <- as.character(values)
     if (length(values) == 0) return(character(0))
@@ -1682,7 +1705,7 @@ server <- function(input, output, session) {
 
   # This observer triggers when any relevant input changes. It performs the heavy
   # calculation and shows a full-screen waiter while doing so.
-  observeEvent(list(input$global_subtype, input$sp_gene, sp_position_debounced(), input$sp_group_by, input$variation_type, input$sp_min_seqs, input$sp_hide_empty_years, input$sp_year_month_start, input$sp_year_month_end), {
+  observeEvent(list(input$global_subtype, input$sp_gene, sp_position_debounced(), input$sp_group_by, input$variation_type, input$sp_min_seqs, input$sp_hide_empty_years, input$sp_year_month_start, input$sp_year_month_end, input$sp_top_n_groups), {
     subtype   <- input$global_subtype
     gene      <- input$sp_gene
     pos       <- sp_position_debounced()
@@ -1716,7 +1739,8 @@ server <- function(input, output, session) {
         pos,
         allowed_yms = allowed_yms,
         min_seqs = input$sp_min_seqs,
-        hide_empty_years = input$sp_hide_empty_years
+        hide_empty_years = input$sp_hide_empty_years,
+        top_n_groups = sp_top_n_groups()
       )
 
       if (is.null(filtered)) {
@@ -2007,6 +2031,44 @@ server <- function(input, output, session) {
       scales::comma(total_count),
       span(style = "margin-left: 10px; color: #5f6c7b;",
            paste0("(", input$sp_gene, " position ", selected_position_label(), ", grouped by ", input$sp_group_by, ")"))
+    )
+  })
+
+  output$sp_group_limit_info <- renderUI({
+    if (!isTRUE(sp_group_limit_active())) return(NULL)
+    req(input$global_subtype, input$variation_type, input$sp_gene, input$sp_group_by, sp_position_debounced())
+
+    summary <- usage_group_limit_summary(
+      input$global_subtype,
+      input$variation_type,
+      input$sp_gene,
+      input$sp_group_by,
+      sp_position_debounced(),
+      top_n_groups = sp_top_n_groups()
+    )
+    if (is.null(summary) || nrow(summary) == 0) return(NULL)
+
+    pct <- if (is.na(summary$percentage[[1]])) "NA" else paste0(sprintf("%.1f", summary$percentage[[1]]), "%")
+    div(
+      class = "alert alert-warning",
+      style = "padding: 10px 12px; margin-bottom: 14px; color: #ffffff;",
+      strong("Nextclade pango display limit"),
+      tags$p(
+        style = "margin: 6px 0 4px;",
+        paste0(
+          "This site has ", scales::comma(summary$total_levels[[1]]),
+          " Nextclade pango levels. To keep the page responsive, only the top ",
+          scales::comma(summary$top_n[[1]]), " levels by sequence count are shown."
+        )
+      ),
+      tags$p(
+        style = "margin: 0; color: #ffffff;",
+        paste0(
+          "Current top ", scales::comma(summary$shown_levels[[1]]), " levels: ",
+          scales::comma(summary$top_count[[1]]), " counted amino acids out of ",
+          scales::comma(summary$total_count[[1]]), " total at this site (", pct, ")."
+        )
+      )
     )
   })
 
