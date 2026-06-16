@@ -1296,6 +1296,76 @@ pathogen_choices_opt <- function() {
   list(disabled = !vapply(unname(choices), pathogen_cache_available, logical(1)))
 }
 
+ha_numbering_candidate_paths <- function() {
+  unique(c(
+    Sys.getenv("RVEATLAS_HA_NUMBERING_PATH", ""),
+    "ha_numbering_review_table.csv",
+    file.path("data", "cache", "FLU", "ha_numbering_review_table.csv"),
+    file.path("outputs", "flu_ha_consensus", "ha_numbering_review_table.csv")
+  ))
+}
+
+ha_numbering_source_path <- function() {
+  paths <- ha_numbering_candidate_paths()
+  paths <- paths[nzchar(paths)]
+  found <- paths[file.exists(paths)]
+  if (length(found) == 0) NA_character_ else found[[1]]
+}
+
+load_ha_numbering_lookup <- function(path = ha_numbering_source_path()) {
+  empty <- data.frame(
+    Subtype = character(),
+    Gene = character(),
+    Full_HA_Position = numeric(),
+    Numbering_Label = character(),
+    stringsAsFactors = FALSE
+  )
+  if (length(path) == 0 || is.na(path) || !file.exists(path)) return(empty)
+  mapping <- read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
+  required <- c(
+    "Subtype", "Full_HA_Position", "Numbering_Scheme", "HA_Region",
+    "Numbering_Position", "Is_Alignment_Gap"
+  )
+  missing <- setdiff(required, names(mapping))
+  if (length(missing) > 0) {
+    warning("HA numbering table is missing columns: ", paste(missing, collapse = ", "))
+    return(empty)
+  }
+  is_gap <- as.logical(mapping$Is_Alignment_Gap)
+  is_gap[is.na(is_gap)] <- FALSE
+  mapping <- mapping[!is_gap & !is.na(mapping$Full_HA_Position), , drop = FALSE]
+  if (nrow(mapping) == 0) return(empty)
+  label_prefix <- ifelse(grepl("^H3", mapping$Numbering_Scheme), "H3", "H1")
+  data.frame(
+    Subtype = as.character(mapping$Subtype),
+    Gene = "HA",
+    Full_HA_Position = suppressWarnings(as.numeric(mapping$Full_HA_Position)),
+    Numbering_Label = paste(label_prefix, mapping$HA_Region, mapping$Numbering_Position),
+    stringsAsFactors = FALSE
+  )
+}
+
+HA_NUMBERING_LOOKUP <- load_ha_numbering_lookup()
+
+ha_numbering_label <- function(subtype, gene, position, is_aa = TRUE) {
+  position <- suppressWarnings(as.numeric(position))
+  empty <- rep("", length(position))
+  if (!isTRUE(is_aa) || !identical(as.character(gene), "HA") || length(position) == 0) return(empty)
+  if (!exists("HA_NUMBERING_LOOKUP") || nrow(HA_NUMBERING_LOOKUP) == 0) return(empty)
+  subtype <- as.character(subtype)
+  for (i in seq_along(position)) {
+    if (is.na(position[[i]])) next
+    hit <- HA_NUMBERING_LOOKUP[
+      HA_NUMBERING_LOOKUP$Subtype == subtype &
+        HA_NUMBERING_LOOKUP$Full_HA_Position == position[[i]],
+      ,
+      drop = FALSE
+    ]
+    if (nrow(hit) > 0) empty[[i]] <- hit$Numbering_Label[[1]]
+  }
+  empty
+}
+
 pathogen_subtype_choices <- function(pathogen_id = "FLU") {
   if (is.null(pathogen_id) || length(pathogen_id) == 0 || is.na(pathogen_id[[1]]) || identical(pathogen_id[[1]], "")) {
     pathogen_id <- "FLU"

@@ -44,11 +44,10 @@ server <- function(input, output, session) {
   })
 
   ha_numbering_text <- function(subtype, gene, position, is_aa = TRUE, leading_space = FALSE) {
-    pos <- suppressWarnings(as.numeric(position))
-    empty <- rep("", length(pos))
-
-    # HA mature-protein numbering is intentionally hidden until updated mappings are provided.
-    empty
+    labels <- ha_numbering_label(subtype, gene, position, is_aa)
+    labels <- ifelse(nzchar(labels), paste0("(", labels, ")"), "")
+    if (isTRUE(leading_space)) labels <- ifelse(nzchar(labels), paste0(" ", labels), "")
+    labels
   }
 
   active_pathogen <- reactive({
