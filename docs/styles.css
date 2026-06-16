@@ -54,13 +54,6 @@ svg {
   display: block;
 }
 
-.icon-sprite {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-
 .site-header {
   position: sticky;
   top: 0;
@@ -625,17 +618,12 @@ svg {
   transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
-.icon-link svg {
+.action-link-icon,
+.st-jude-link-logo {
   width: 38px;
   height: 38px;
-  padding: 8px;
   border-radius: 50%;
-  background: currentColor;
-  fill: none;
-  stroke: var(--white);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
+  object-fit: cover;
 }
 
 .icon-link:hover,

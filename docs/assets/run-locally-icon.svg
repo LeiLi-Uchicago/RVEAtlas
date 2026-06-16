@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Run locally icon">
+  <circle cx="24" cy="24" r="24" fill="#2563eb"/>
+  <rect x="10" y="13" width="28" height="20" rx="3" fill="#ffffff"/>
+  <rect x="13.5" y="16.5" width="21" height="13" rx="1.5" fill="#0f172a"/>
+  <path d="M18 21l4 3l-4 3" fill="none" stroke="#7dd3fc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24 27h7" fill="none" stroke="#7dd3fc" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M7.5 36h33" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+</svg>
