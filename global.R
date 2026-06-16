@@ -1650,6 +1650,16 @@ standard_group_value_sql <- function() {
   "CASE WHEN Grouping_Type = 'Year_Month' THEN Year_Month ELSE Clade END"
 }
 
+is_year_month_grouping <- function(group_by) {
+  group_by <- as.character(group_by)
+  length(group_by) == 1 && group_by %in% c("Year_Month", "Year_month")
+}
+
+adapter_table_available <- function(cfg, table_name) {
+  con <- adapter_db_conn(cfg)
+  !is.null(con) && DBI::dbExistsTable(con, table_name)
+}
+
 adapter_available_genes <- function(subtype, var_type) {
   if (!identical(var_type, "AA")) return(character(0))
   cfg <- adapter_config(subtype)
@@ -1783,17 +1793,68 @@ adapter_year_month_choices <- function(subtype, var_type, gene, group_by, positi
   cfg <- adapter_config(subtype)
   if (is.null(cfg)) return(character(0))
   raw_subtype <- adapter_subtype_value(subtype)
+  pos_filter <- adapter_position_filter(cfg, position)
   if (identical(cfg$schema, "covid")) {
+    if (!is_year_month_grouping(group_by)) return(character(0))
     res <- adapter_query(
       cfg,
-      "SELECT DISTINCT GroupValue AS Year_Month FROM usage WHERE Protein = ? AND GroupType = ? AND PositionBase = ? ORDER BY Year_Month",
-      list(gene, group_by, as.numeric(position))
+      paste0(
+        "SELECT DISTINCT GroupValue AS Year_Month
+         FROM usage
+         WHERE Protein = ? AND GroupType IN ('Year_Month', 'Year_month') AND ",
+        pos_filter$sql,
+        " ORDER BY Year_Month"
+      ),
+      list(gene, pos_filter$value)
+    )
+  } else if (identical(group_by, "Clade") && adapter_table_available(cfg, "usage_clade_time")) {
+    res <- adapter_query(
+      cfg,
+      paste0(
+        "SELECT DISTINCT Year_Month
+         FROM usage_clade_time
+         WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND ",
+        pos_filter$sql,
+        " AND Year_Month IS NOT NULL
+       ORDER BY Year_Month"
+      ),
+      list(raw_subtype, var_type, gene, pos_filter$value)
+    )
+  } else if (identical(group_by, "Year")) {
+    res <- adapter_query(
+      cfg,
+      paste0(
+        "SELECT DISTINCT Year_Month
+         FROM usage
+         WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = 'Year_Month' AND ",
+        pos_filter$sql,
+        " AND Year_Month IS NOT NULL
+         ORDER BY Year_Month"
+      ),
+      list(raw_subtype, gene, pos_filter$value)
+    )
+  } else if (is_year_month_grouping(group_by)) {
+    res <- adapter_query(
+      cfg,
+      paste0(
+        "SELECT DISTINCT Year_Month
+         FROM usage
+         WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = 'Year_Month' AND ",
+        pos_filter$sql,
+        " AND Year_Month IS NOT NULL
+         ORDER BY Year_Month"
+      ),
+      list(raw_subtype, gene, pos_filter$value)
     )
   } else {
     res <- adapter_query(
       cfg,
-      "SELECT DISTINCT Year_Month FROM usage WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = ? AND Position = ? AND Year_Month IS NOT NULL ORDER BY Year_Month",
-      list(raw_subtype, gene, group_by, as.numeric(position))
+      paste0(
+        "SELECT DISTINCT Year_Month FROM usage WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = ? AND ",
+        pos_filter$sql,
+        " AND Year_Month IS NOT NULL ORDER BY Year_Month"
+      ),
+      list(raw_subtype, gene, group_by, pos_filter$value)
     )
   }
   if (is.null(res) || nrow(res) == 0) return(character(0))
@@ -1867,23 +1928,58 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
       ),
       list(gene, group_by, pos_filter$value)
     )
+  } else if (
+    !is.null(allowed_yms) && length(allowed_yms) > 0 &&
+      identical(group_by, "Clade") && adapter_table_available(cfg, "usage_clade_time")
+  ) {
+    data <- adapter_query(
+      cfg,
+      paste0(
+        "SELECT ", adapter_quote(cfg, subtype), " AS \"Group\", Gene, Clade,
+                Position, Position_Label, Position_Key, Year_Month, AminoAcid,
+                SUM(Count) AS Count, ANY_VALUE(Codon_Usage) AS Codon_Usage
+         FROM usage_clade_time
+         WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND ", pos_filter$sql, " AND AminoAcid NOT IN ('X', '-')
+         GROUP BY Gene, Clade, Position, Position_Label, Position_Key, Year_Month, AminoAcid"
+      ),
+      list(raw_subtype, var_type, gene, pos_filter$value)
+    )
+  } else if (!is.null(allowed_yms) && length(allowed_yms) > 0 && identical(group_by, "Year")) {
+    data <- adapter_query(
+      cfg,
+      paste0(
+        "SELECT ", adapter_quote(cfg, subtype), " AS \"Group\", Gene, SUBSTR(Year_Month, 1, 4) AS Clade,
+                Position, Position_Label, Position_Key, Year_Month, AminoAcid,
+                SUM(Count) AS Count, ANY_VALUE(Codon_Usage) AS Codon_Usage
+         FROM usage
+         WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = 'Year_Month' AND ", pos_filter$sql, " AND AminoAcid NOT IN ('X', '-')
+           AND Year_Month IS NOT NULL
+         GROUP BY Gene, SUBSTR(Year_Month, 1, 4), Position, Position_Label, Position_Key, Year_Month, AminoAcid"
+      ),
+      list(raw_subtype, gene, pos_filter$value)
+    )
   } else {
     data <- adapter_query(
       cfg,
       paste0(
         "SELECT ", adapter_quote(cfg, subtype), " AS \"Group\", Gene, ", standard_group_value_sql(), " AS Clade,
-                Position, Position_Label, Position_Key, AminoAcid, SUM(Count) AS Count, ANY_VALUE(Codon_Usage) AS Codon_Usage
+                Position, Position_Label, Position_Key, Year_Month, AminoAcid, SUM(Count) AS Count, ANY_VALUE(Codon_Usage) AS Codon_Usage
          FROM usage
          WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = ? AND ", pos_filter$sql, " AND AminoAcid NOT IN ('X', '-')
-         GROUP BY Gene, ", standard_group_value_sql(), ", Position, Position_Label, Position_Key, AminoAcid"
+         GROUP BY Gene, ", standard_group_value_sql(), ", Position, Position_Label, Position_Key, Year_Month, AminoAcid"
       ),
       list(raw_subtype, gene, group_by, pos_filter$value)
     )
   }
   if (is.null(data)) return(NULL)
   if (nrow(data) == 0) return(data.frame())
-  if (!is.null(allowed_yms) && length(allowed_yms) > 0 && group_by == "Year_Month") {
-    data <- data %>% filter(.data$Clade %in% allowed_yms)
+  # Year_Month range is applied before regrouping, regardless of selected grouping.
+  if (!is.null(allowed_yms) && length(allowed_yms) > 0) {
+    if ("Year_Month" %in% names(data)) {
+      data <- data %>% filter(.data$Year_Month %in% allowed_yms)
+    } else if (is_year_month_grouping(group_by)) {
+      data <- data %>% filter(.data$Clade %in% allowed_yms)
+    }
   }
   if (nrow(data) == 0) {
     out <- data.frame(Group=character(), Gene=character(), Position=numeric(), AminoAcid=character(), Count=numeric(), Valid_Total=numeric(), `Frequency(%)`=numeric(), check.names = FALSE)

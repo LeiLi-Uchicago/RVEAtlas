@@ -439,13 +439,14 @@ server <- function(input, output, session) {
 
     group_map <- setNames(available_groups, available_groups)
     
-    if ("Year_Month" %in% names(group_map)) names(group_map)[group_map == "Year_Month"] <- "Year-Month"
-    other_indices <- which(!(group_map %in% c("Year", "Year_Month")))
+    ym_keys <- group_map[vapply(group_map, is_year_month_grouping, logical(1))]
+    if (length(ym_keys) > 0) names(group_map)[group_map %in% ym_keys] <- "Year-Month"
+    other_indices <- which(!(group_map == "Year" | vapply(group_map, is_year_month_grouping, logical(1))))
     for (i in other_indices) {
       names(group_map)[i] <- gsub("_", " ", group_map[i])
     }
     
-    priority_keys <- intersect(c("Year", "Year_Month"), available_groups)
+    priority_keys <- available_groups[available_groups == "Year" | vapply(available_groups, is_year_month_grouping, logical(1))]
     other_keys <- sort(setdiff(available_groups, priority_keys))
     final_ordered_keys <- c(priority_keys, other_keys)
     
@@ -477,7 +478,8 @@ server <- function(input, output, session) {
 
   sp_year_month_choices <- reactive({
     req(input$global_subtype, input$variation_type, input$sp_gene, input$sp_group_by, sp_position_debounced())
-    if (!input$sp_group_by %in% c("Year_Month", "Year_month")) return(character(0))
+    # Year_Month range should be available for any grouping; the filter is
+    # applied before regrouping counts by clade, year, or metadata.
     pos <- sp_position_debounced()
 
     if (usage_duckdb_available()) {
@@ -509,7 +511,9 @@ server <- function(input, output, session) {
     if (!(start_value %in% ym_values) || !(end_value %in% ym_values)) return(NULL)
 
     selected_idx <- match(c(start_value, end_value), ym_values)
-    ym_values[seq(min(selected_idx), max(selected_idx))]
+    selected <- ym_values[seq(min(selected_idx), max(selected_idx))]
+    if (length(selected) == length(ym_values)) return(NULL)
+    selected
   }
 
   every_nth_value <- function(values, n = 6) {
@@ -595,8 +599,9 @@ server <- function(input, output, session) {
     if (length(available_groups) == 0) return()
     
     group_map <- setNames(available_groups, available_groups)
-    if ("Year_Month" %in% names(group_map)) names(group_map)[group_map == "Year_Month"] <- "Year-Month"
-    for (i in which(!(group_map %in% c("Year", "Year_Month")))) {
+    ym_keys <- group_map[vapply(group_map, is_year_month_grouping, logical(1))]
+    if (length(ym_keys) > 0) names(group_map)[group_map %in% ym_keys] <- "Year-Month"
+    for (i in which(!(group_map == "Year" | vapply(group_map, is_year_month_grouping, logical(1))))) {
       names(group_map)[i] <- gsub("_", " ", group_map[i])
     }
     
@@ -604,7 +609,8 @@ server <- function(input, output, session) {
     
     current_sel <- if (!is.null(input$pw_group_by) &&
                        input$pw_group_by %in% available_groups &&
-                       !input$pw_group_by %in% c("Year", "Year_Month")) {
+                       input$pw_group_by != "Year" &&
+                       !is_year_month_grouping(input$pw_group_by)) {
       input$pw_group_by
     } else {
       preferred_clade_group(available_groups)
