@@ -961,11 +961,12 @@ usage_max_position <- function(subtype, var_type, gene) {
 }
 
 usage_year_month_choices <- function(subtype, var_type, gene, group_by, position) {
+  lookup_group <- if (identical(group_by, "Year")) "Year_Month" else group_by
   res <- usage_query(
     "SELECT DISTINCT Year_Month_Filter FROM usage
      WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND Grouping_Type = ?
        AND Position = ? AND Year_Month_Filter IS NOT NULL",
-    list(subtype, var_type, gene, group_by, as.numeric(position))
+    list(subtype, var_type, gene, lookup_group, as.numeric(position))
   )
   if (is.null(res) || nrow(res) == 0) return(character(0))
 
@@ -999,6 +1000,28 @@ usage_single_position <- function(subtype, var_type, gene, group_by, position, a
     }
   }
 
+  if (identical(group_by, "Year") && nzchar(ym_filter)) {
+    sql <- paste0(
+      "SELECT \"Group\", Gene, Position,
+              CASE
+                WHEN Year_Month_Filter IN ('Unknown', 'unassigned', 'Unassigned') THEN Year_Month_Filter
+                ELSE SUBSTR(Year_Month_Filter, 1, 4)
+              END AS Clade,
+              AminoAcid, SUM(Count) AS Count,
+              ANY_VALUE(Codon_Usage) AS Codon_Usage
+       FROM usage
+       WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND Grouping_Type = 'Year_Month'
+         AND Position = ? AND AminoAcid NOT IN ('X', '-')",
+      ym_filter,
+      " GROUP BY \"Group\", Gene, Position,
+         CASE
+           WHEN Year_Month_Filter IN ('Unknown', 'unassigned', 'Unassigned') THEN Year_Month_Filter
+           ELSE SUBSTR(Year_Month_Filter, 1, 4)
+         END,
+         AminoAcid"
+    )
+    res <- usage_query(sql, list(subtype, var_type, gene, as.numeric(position)))
+  } else {
   sql <- paste0(
     "SELECT \"Group\", Gene, Position,
             CASE WHEN Grouping_Type = 'Year_Month' THEN Year_Month_Filter ELSE Clade END AS Clade,
@@ -1013,6 +1036,7 @@ usage_single_position <- function(subtype, var_type, gene, group_by, position, a
        AminoAcid"
   )
   res <- usage_query(sql, list(subtype, var_type, gene, group_by, as.numeric(position)))
+  }
   if (is.null(res)) return(NULL)
   if (nrow(res) == 0) {
     out <- data.frame(Group=character(), Gene=character(), Position=numeric(), AminoAcid=character(), Count=numeric(), Valid_Total=numeric(), `Frequency(%)`=numeric(), check.names = FALSE)
