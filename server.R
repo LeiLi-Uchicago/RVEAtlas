@@ -550,29 +550,137 @@ server <- function(input, output, session) {
 
     if (length(ym_values) == 0) {
       return(
-        helpText("Time range slider is unavailable for this grouping.")
+        p(
+          class = "sp-time-filter-help",
+          "Year-Month data is unavailable for this selection."
+        )
       )
     }
 
-    start_sel <- if (!is.null(input$sp_year_month_start) && input$sp_year_month_start %in% ym_values) {
-      input$sp_year_month_start
+    current_start <- isolate(input$sp_year_month_start)
+    current_end <- isolate(input$sp_year_month_end)
+    start_sel <- if (!is.null(current_start) && current_start %in% ym_values) {
+      current_start
     } else {
       ym_values[1]
     }
-    end_sel <- if (!is.null(input$sp_year_month_end) && input$sp_year_month_end %in% ym_values) {
-      input$sp_year_month_end
+    end_sel <- if (!is.null(current_end) && current_end %in% ym_values) {
+      current_end
     } else {
       ym_values[length(ym_values)]
     }
 
-    tagList(
-      tags$label("Filter Year-Month:", style = "font-weight: bold; color: #2c3e50;"),
-      fluidRow(
-        column(6, selectInput("sp_year_month_start", "Start:", choices = ym_values, selected = start_sel, width = "100%")),
-        column(6, selectInput("sp_year_month_end", "End:", choices = ym_values, selected = end_sel, width = "100%"))
-      )
+    start_input <- selectInput(
+      "sp_year_month_start",
+      "Start:",
+      choices = ym_values,
+      selected = start_sel,
+      width = "100%"
+    )
+    end_input <- selectInput(
+      "sp_year_month_end",
+      "End:",
+      choices = ym_values,
+      selected = end_sel,
+      width = "100%"
+    )
+    if (!isTRUE(isolate(input$sp_year_month_filter_enabled))) {
+      start_input <- shinyjs::disabled(start_input)
+      end_input <- shinyjs::disabled(end_input)
+    }
+
+    fluidRow(
+      column(12, start_input),
+      column(12, end_input)
     )
   })
+
+  sp_allowed_year_months <- reactive({
+    if (!isTRUE(input$sp_year_month_filter_enabled)) return(NULL)
+    ym_values <- sp_year_month_choices()
+    get_selected_year_months(
+      ym_values,
+      input$sp_year_month_start,
+      input$sp_year_month_end
+    )
+  })
+
+  observe({
+    ym_values <- sp_year_month_choices()
+    has_year_months <- length(ym_values) > 0
+    enabled <- isTRUE(input$sp_year_month_filter_enabled) && has_year_months
+    if (!has_year_months && isTRUE(input$sp_year_month_filter_enabled)) {
+      updateCheckboxInput(session, "sp_year_month_filter_enabled", value = FALSE)
+    }
+    shinyjs::toggleState("sp_year_month_filter_enabled", condition = has_year_months)
+    shinyjs::toggleClass(
+      selector = ".sp-time-filter-box",
+      class = "sp-time-filter-disabled",
+      condition = !enabled
+    )
+    shinyjs::delay(50, {
+      shinyjs::toggleState("sp_year_month_start", condition = enabled)
+      shinyjs::toggleState("sp_year_month_end", condition = enabled)
+    })
+  })
+
+  observeEvent(input$sp_year_month_filter_enabled, {
+    if (!isTRUE(input$sp_year_month_filter_enabled)) {
+      ym_values <- sp_year_month_choices()
+      if (length(ym_values) > 0) {
+        updateSelectInput(session, "sp_year_month_start", selected = ym_values[[1]])
+        updateSelectInput(session, "sp_year_month_end", selected = ym_values[[length(ym_values)]])
+      }
+      return()
+    }
+    req(length(sp_year_month_choices()) > 0)
+
+    showModal(modalDialog(
+      title = div(
+        class = "ent-filter-modal-title",
+        span(class = "ent-filter-modal-icon", icon("calendar-alt")),
+        span(
+          span(class = "ent-filter-modal-heading", "Year-Month filtering enabled"),
+          span(class = "ent-filter-modal-kicker", "Narrowing the date range recalculates this site")
+        )
+      ),
+      div(
+        class = "ent-filter-modal-body",
+        p(
+          class = "ent-filter-modal-intro",
+          "Choose a Start and End month to limit the Single Site analysis. The plot, table, and sequence totals will update using only records in that period."
+        ),
+        div(
+          class = "ent-filter-modal-steps",
+          div(
+            class = "ent-filter-modal-step",
+            strong(icon("calendar"), " Full timeline"),
+            span("With this switch off, all available months are included.")
+          ),
+          div(
+            class = "ent-filter-modal-step",
+            strong(icon("filter"), " Selected range"),
+            span("With this switch on, results are recalculated for your chosen months.")
+          )
+        ),
+        div(
+          class = "ent-filter-modal-note",
+          icon("clock"),
+          span("Large datasets may need a few extra seconds after the date range changes.")
+        )
+      ),
+      easyClose = TRUE,
+      footer = tags$button(
+        type = "button",
+        class = "btn ent-filter-modal-action",
+        `data-dismiss` = "modal",
+        `data-bs-dismiss` = "modal",
+        icon("check"),
+        "Got it — set the range"
+      ),
+      size = "m"
+    ))
+  }, ignoreInit = TRUE)
   
   # --- HELPER: Update Gene Dropdowns based on Subtype ---
   observeEvent(available_genes(), {
@@ -1789,7 +1897,7 @@ server <- function(input, output, session) {
 
   # This observer triggers when any relevant input changes. It performs the heavy
   # calculation and shows a full-screen waiter while doing so.
-  observeEvent(list(input$global_subtype, input$sp_gene, sp_position_debounced(), input$sp_group_by, input$variation_type, input$sp_min_seqs, input$sp_hide_empty_years, input$sp_year_month_start, input$sp_year_month_end, input$sp_top_n_groups), {
+  observeEvent(list(input$global_subtype, input$sp_gene, sp_position_debounced(), input$sp_group_by, input$variation_type, input$sp_min_seqs, input$sp_year_month_start, input$sp_year_month_end, input$sp_top_n_groups), {
     subtype   <- input$global_subtype
     gene      <- input$sp_gene
     pos       <- sp_position_debounced()
@@ -1812,8 +1920,7 @@ server <- function(input, output, session) {
     }
 
     if (usage_duckdb_available()) {
-      ym_values <- sp_year_month_choices()
-      allowed_yms <- get_selected_year_months(ym_values, input$sp_year_month_start, input$sp_year_month_end)
+      allowed_yms <- sp_allowed_year_months()
 
       filtered <- usage_single_position(
         subtype,
@@ -1823,7 +1930,7 @@ server <- function(input, output, session) {
         pos,
         allowed_yms = allowed_yms,
         min_seqs = input$sp_min_seqs,
-        hide_empty_years = input$sp_hide_empty_years,
+        hide_empty_years = FALSE,
         top_n_groups = sp_top_n_groups()
       )
 
@@ -1851,8 +1958,7 @@ server <- function(input, output, session) {
     filtered <- data %>% 
       filter(Group == subtype, Gene == gene, Position == pos) %>%
       {
-        ym_values <- sp_year_month_choices()
-        allowed_yms <- get_selected_year_months(ym_values, input$sp_year_month_start, input$sp_year_month_end)
+        allowed_yms <- sp_allowed_year_months()
 
         if (!is.null(allowed_yms)) {
           dplyr::filter(., Year_Month_Filter %in% allowed_yms)
@@ -1881,11 +1987,6 @@ server <- function(input, output, session) {
     # } else if (group_col == "Year") {
     #   filtered <- filtered %>% filter(Year != "Unknown")
     # }
-    
-    # 6. Optionally hide years without records (Valid_Total > 0)
-    if (group_col == "Year" && input$sp_hide_empty_years) {
-      filtered <- filtered %>% filter(Valid_Total > 0)
-    }
     
     # Once calculation is done, update the reactiveVal
     sp_data_val(filtered)
@@ -1926,20 +2027,13 @@ server <- function(input, output, session) {
     if (group_col == "Year") {
       present_specials <- intersect(special_values, as.character(data[[group_col]]))
       has_specials <- length(present_specials) > 0
-      
-      if (input$sp_hide_empty_years || has_specials) {
-        # Treat as categorical to hide gaps or handle Unknown/unassigned
-        all_years <- sort(unique(as.character(data[[group_col]])))
-        if (has_specials) {
-          all_years <- c(present_specials, setdiff(all_years, present_specials))
-        }
-        data[[group_col]] <- factor(data[[group_col]], levels = all_years)
-        x_scale <- scale_x_discrete()
-      } else {
-        # Treat as continuous to show gaps naturally
-        data[[group_col]] <- as.numeric(as.character(data[[group_col]]))
-        x_scale <- scale_x_continuous(breaks = function(x) unique(floor(pretty(seq(min(x, na.rm=TRUE), max(x, na.rm=TRUE))))))
+
+      all_years <- sort(unique(as.character(data[[group_col]])))
+      if (has_specials) {
+        all_years <- c(present_specials, setdiff(all_years, present_specials))
       }
+      data[[group_col]] <- factor(data[[group_col]], levels = all_years)
+      x_scale <- scale_x_discrete()
     } else if (group_col == "Year_Month") {
       all_yms <- sort(unique(as.character(data[[group_col]])))
       present_specials <- intersect(special_values, all_yms)

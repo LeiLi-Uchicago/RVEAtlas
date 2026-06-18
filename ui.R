@@ -652,6 +652,96 @@ ui <- navbarPage(
         max-width: 100%;
         min-width: 0;
       }
+      .sp-time-filter-box {
+        margin-top: 0;
+        padding: 12px 14px;
+        border: 1px solid var(--rve-border);
+        border-radius: 12px;
+        background: var(--rve-surface-soft);
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+      .sp-time-filter-box.sp-time-filter-disabled {
+        background: #f2f6f6;
+      }
+      .sp-time-filter-box.sp-time-filter-disabled .sp-time-filter-fields {
+        opacity: 0.58;
+      }
+      .sp-time-filter-header {
+        margin-bottom: 9px;
+      }
+      .sp-time-filter-header .form-group,
+      .sp-time-filter-header .checkbox {
+        margin: 0;
+      }
+      .sp-time-filter-header label {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        color: var(--rve-navy);
+        font-weight: 800;
+        cursor: pointer;
+      }
+      #sp_year_month_filter_enabled {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+        opacity: 0;
+        clip-path: inset(50%);
+      }
+      .sp-time-filter-header label::before {
+        content: '';
+        width: 38px;
+        height: 22px;
+        flex: 0 0 38px;
+        border-radius: 999px;
+        background: #64748b;
+        transition: background-color 0.2s ease;
+      }
+      .sp-time-filter-header label::after {
+        content: '';
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(16, 32, 51, 0.28);
+        transition: transform 0.2s ease;
+      }
+      .sp-time-filter-header label:has(#sp_year_month_filter_enabled:checked)::before {
+        background: var(--rve-blue);
+      }
+      .sp-time-filter-header label:has(#sp_year_month_filter_enabled:checked)::after {
+        transform: translateX(16px);
+      }
+      .sp-time-filter-header label:focus-within::before {
+        outline: 3px solid #2563eb;
+        outline-offset: 2px;
+      }
+      .sp-time-filter-fields .row {
+        margin-right: -5px;
+        margin-left: -5px;
+      }
+      .sp-time-filter-fields .row > div {
+        padding-right: 5px;
+        padding-left: 5px;
+      }
+      .sp-time-filter-fields .form-group {
+        margin-bottom: 0;
+      }
+      .sp-time-filter-fields .row > div:first-child {
+        margin-bottom: 8px;
+      }
+      .sp-time-filter-help {
+        margin: 0;
+        color: var(--rve-muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
       .modal-dialog:has(.ent-filter-modal-body) {
         width: calc(100vw - 32px) !important;
         max-width: 720px !important;
@@ -1476,13 +1566,29 @@ ui <- navbarPage(
            fluidPage(
              rve_control_card(
                fluidRow(
-                 column(3,
+                 column(2,
                         h5("Setting", style="font-weight: bold; color: #2980b9;"),
                         selectInput("sp_group_by", "Group by:", choices = NULL),
-                        uiOutput("sp_group_limit_ui"),
-                        uiOutput("sp_year_month_range_ui"),
-                        checkboxInput("sp_hide_empty_years", "Hide years without records (when Group by Year)", value = TRUE),
-                        checkboxInput("sp_show_counts", "Show raw counts instead of percentage", value = FALSE)
+                        checkboxInput("sp_show_counts", "Show raw counts instead of percentage", value = FALSE),
+                        uiOutput("sp_group_limit_ui")
+                 ),
+                 column(3,
+                        h5("Time Filter", style="font-weight: bold; color: #2980b9;"),
+                        div(
+                          class = "sp-time-filter-box sp-time-filter-disabled",
+                          div(
+                            class = "sp-time-filter-header",
+                            checkboxInput(
+                              "sp_year_month_filter_enabled",
+                              "Filter Year-Month",
+                              value = FALSE
+                            )
+                          ),
+                          div(
+                            class = "sp-time-filter-fields",
+                            uiOutput("sp_year_month_range_ui")
+                          )
+                        )
                  ),
                  column(2,
                         div(id = "sp_quick_access_section",
@@ -1492,7 +1598,7 @@ ui <- navbarPage(
                         ),
                         sliderInput("sp_min_seqs", "Min Seqs:", min = 1, max = 500, value = 5)
                  ),
-                 column(5,
+                 column(3,
                         h5("Precise Access", style="font-weight: bold; color: #2980b9;"),
                         fluidRow(
                           column(12, selectInput("sp_gene", "Gene:", choices = NULL))
