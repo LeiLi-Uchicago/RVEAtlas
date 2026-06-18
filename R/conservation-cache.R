@@ -53,16 +53,46 @@ conservation_entropy_from_counts <- function(counts) {
   result[order(suppressWarnings(as.numeric(as.character(result$Position))), result$Position), , drop = FALSE]
 }
 
+conservation_cache_structure_valid <- function(
+  cache,
+  schema_version = CONSERVATION_CACHE_SCHEMA_VERSION
+) {
+  is.list(cache) &&
+    identical(cache$schema_version, as.integer(schema_version)) &&
+    is.data.frame(cache$data) &&
+    all(CONSERVATION_CACHE_REQUIRED_COLUMNS %in% names(cache$data))
+}
+
+conservation_signature_identity <- function(signature) {
+  if (!is.list(signature)) return(NULL)
+
+  files <- as.character(signature$files)
+  sizes <- suppressWarnings(as.numeric(signature$sizes))
+  if (length(files) == 0 || length(files) != length(sizes)) return(NULL)
+
+  list(
+    files = gsub("\\\\", "/", files),
+    sizes = sizes
+  )
+}
+
 conservation_cache_valid <- function(
   cache,
   source_signature,
   schema_version = CONSERVATION_CACHE_SCHEMA_VERSION
 ) {
-  is.list(cache) &&
-    identical(cache$schema_version, as.integer(schema_version)) &&
-    identical(cache$source_signature, source_signature) &&
-    is.data.frame(cache$data) &&
-    all(CONSERVATION_CACHE_REQUIRED_COLUMNS %in% names(cache$data))
+  if (!conservation_cache_structure_valid(cache, schema_version)) return(FALSE)
+
+  # A deployed copy may intentionally contain only the pre-calculated cache.
+  # In that case there is no source data against which to mark it stale.
+  if (length(source_signature$files) == 0) return(TRUE)
+
+  # File mtimes commonly change when the application is copied to another
+  # machine. Compare the portable parts of the signature instead.
+  identical(
+    conservation_signature_identity(cache$source_signature),
+    conservation_signature_identity(source_signature)
+  )
 }
 
 conservation_cache_lookup <- function(cache, subtype, variation_type, gene) {
@@ -192,7 +222,22 @@ ensure_conservation_entropy_cache <- function(pathogen_id, force = FALSE) {
     return(path)
   }
 
-  build_conservation_entropy_cache(pathogen_id)
+  tryCatch(
+    build_conservation_entropy_cache(pathogen_id),
+    error = function(error) {
+      if (!isTRUE(force) && conservation_cache_structure_valid(cache)) {
+        warning(
+          "Conservation entropy cache could not be refreshed for ",
+          pathogen_id, "; using the existing pre-calculated cache: ",
+          conditionMessage(error),
+          call. = FALSE
+        )
+        conservation_cache_env[[pathogen_id]] <- cache
+        return(path)
+      }
+      stop(error)
+    }
+  )
 }
 
 ensure_all_conservation_entropy_caches <- function(force = FALSE) {
@@ -216,10 +261,14 @@ load_conservation_entropy_cache <- function(pathogen_id) {
   cached <- conservation_cache_env[[pathogen_id]]
   if (!is.null(cached)) return(cached)
 
-  path <- ensure_conservation_entropy_cache(pathogen_id)
+  path <- tryCatch(
+    ensure_conservation_entropy_cache(pathogen_id),
+    error = function(error) conservation_cache_path(pathogen_id)
+  )
   if (is.null(path) || !file.exists(path)) return(NULL)
   cache <- tryCatch(readRDS(path), error = function(error) NULL)
-  if (!is.null(cache)) conservation_cache_env[[pathogen_id]] <- cache
+  if (!conservation_cache_structure_valid(cache)) return(NULL)
+  conservation_cache_env[[pathogen_id]] <- cache
   cache
 }
 
