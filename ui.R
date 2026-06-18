@@ -652,10 +652,140 @@ ui <- navbarPage(
         max-width: 100%;
         min-width: 0;
       }
+      .modal-dialog:has(.ent-filter-modal-body) {
+        width: calc(100vw - 32px) !important;
+        max-width: 720px !important;
+      }
+      .modal-content:has(.ent-filter-modal-body) {
+        overflow: hidden;
+        border: 0;
+        border-radius: 18px;
+        box-shadow: 0 28px 80px rgba(16, 32, 51, 0.28);
+      }
+      .modal-content:has(.ent-filter-modal-body) .modal-header {
+        padding: 22px 24px 16px;
+        border-bottom: 0;
+        background:
+          radial-gradient(circle at 90% 10%, rgba(120, 194, 173, 0.30), transparent 38%),
+          linear-gradient(135deg, #f7fffc 0%, #eef8f7 100%);
+      }
+      .modal-content:has(.ent-filter-modal-body) .modal-title {
+        width: 100%;
+      }
+      .ent-filter-modal-title {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--rve-navy);
+      }
+      .ent-filter-modal-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 46px;
+        height: 46px;
+        flex: 0 0 46px;
+        border-radius: 14px;
+        color: #ffffff;
+        background: linear-gradient(145deg, var(--rve-blue), #267ca8);
+        box-shadow: 0 8px 20px rgba(0, 75, 135, 0.24);
+      }
+      .ent-filter-modal-heading {
+        display: block;
+        font-size: 21px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .ent-filter-modal-kicker {
+        display: block;
+        margin-top: 2px;
+        color: var(--rve-muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .modal-content:has(.ent-filter-modal-body) .modal-body {
+        padding: 4px 24px 22px;
+      }
+      .ent-filter-modal-intro {
+        margin: 0 0 16px;
+        color: #33475b;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      .ent-filter-modal-steps {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .ent-filter-modal-step {
+        padding: 13px 14px;
+        border: 1px solid var(--rve-border);
+        border-radius: 12px;
+        background: #f8fbfc;
+      }
+      .ent-filter-modal-step strong {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--rve-navy);
+        font-size: 13px;
+      }
+      .ent-filter-modal-step span {
+        color: var(--rve-muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .ent-filter-modal-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        margin-top: 14px;
+        padding: 11px 13px;
+        border-radius: 10px;
+        color: #795400;
+        background: #fff8e6;
+        border: 1px solid #f4d98c;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .modal-content:has(.ent-filter-modal-body) .modal-footer {
+        padding: 15px 24px 20px;
+        border-top: 1px solid #edf2f4;
+        background: #fbfdfd;
+      }
+      .modal-content:has(.ent-filter-modal-body) .ent-filter-modal-action {
+        min-width: 170px;
+        padding: 10px 18px;
+        border: 0;
+        border-radius: 10px;
+        color: #ffffff;
+        background: var(--rve-blue);
+        font-weight: 750;
+        box-shadow: 0 6px 16px rgba(0, 75, 135, 0.20);
+      }
+      .modal-content:has(.ent-filter-modal-body) .ent-filter-modal-action:hover,
+      .modal-content:has(.ent-filter-modal-body) .ent-filter-modal-action:focus {
+        color: #ffffff;
+        background: #003b6b;
+      }
       @media (max-width: 768px) {
         .ent-filter-fields {
           grid-template-columns: 1fr;
           gap: 0;
+        }
+        .ent-filter-modal-steps {
+          grid-template-columns: 1fr;
+        }
+        .modal-content:has(.ent-filter-modal-body) .modal-header {
+          padding: 18px 18px 12px;
+        }
+        .modal-content:has(.ent-filter-modal-body) .modal-body {
+          padding: 4px 18px 18px;
+        }
+        .modal-content:has(.ent-filter-modal-body) .modal-footer {
+          padding: 14px 18px 18px;
+        }
+        .modal-content:has(.ent-filter-modal-body) .ent-filter-modal-action {
+          width: 100%;
         }
       }
       .ent-plot-loading-wrap {

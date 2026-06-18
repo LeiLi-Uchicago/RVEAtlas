@@ -982,10 +982,49 @@ server <- function(input, output, session) {
     }
 
     showModal(modalDialog(
-      title = "Group filtering may take longer",
-      "Real-time calculations using a group filter may take longer. Please wait while the results are recalculated.",
+      title = div(
+        class = "ent-filter-modal-title",
+        span(class = "ent-filter-modal-icon", icon("sliders-h")),
+        span(
+          span(class = "ent-filter-modal-heading", "Live filtering enabled"),
+          span(class = "ent-filter-modal-kicker", "A more focused view may take a little longer")
+        )
+      ),
+      div(
+        class = "ent-filter-modal-body",
+        p(
+          class = "ent-filter-modal-intro",
+          "The default Conservation view uses pre-calculated data. Selecting a specific group switches to a live calculation tailored to your filter."
+        ),
+        div(
+          class = "ent-filter-modal-steps",
+          div(
+            class = "ent-filter-modal-step",
+            strong(icon("bolt"), " Cached view"),
+            span("Fast results when Group is set to All.")
+          ),
+          div(
+            class = "ent-filter-modal-step",
+            strong(icon("calculator"), " Filtered view"),
+            span("Calculated on demand for the selected group.")
+          )
+        ),
+        div(
+          class = "ent-filter-modal-note",
+          icon("clock"),
+          span("Large genes or datasets may need a few extra seconds. Please keep this tab open while the plot updates.")
+        )
+      ),
       easyClose = TRUE,
-      footer = modalButton("OK")
+      footer = tags$button(
+        type = "button",
+        class = "btn ent-filter-modal-action",
+        `data-dismiss` = "modal",
+        `data-bs-dismiss` = "modal",
+        icon("check"),
+        "Got it — choose a group"
+      ),
+      size = "m"
     ))
     refresh_ent_group_choices()
   }, ignoreInit = TRUE)
