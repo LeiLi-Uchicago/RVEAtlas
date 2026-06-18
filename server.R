@@ -3003,11 +3003,12 @@ server <- function(input, output, session) {
 
   observeEvent(input$ent_site_jump, {
     req(input$ent_site_jump$position, input$ent_gene)
-    position_value <- as.character(input$ent_site_jump$position)
     jump_subtype <- scalar_input(input$global_subtype)
     jump_var_type <- scalar_input(input$variation_type)
     jump_gene <- scalar_input(input$ent_gene)
     position_choices <- usage_position_choices(jump_subtype, jump_var_type, jump_gene)
+    position_label <- as.character(input$ent_site_jump$position_label %||% input$ent_site_jump$position)
+    position_value <- entropy_position_value(position_label, position_choices)
     pending_sp_position_jump(position_value)
 
     if (!identical(scalar_input(input$sp_gene), jump_gene)) {
