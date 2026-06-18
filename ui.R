@@ -567,6 +567,97 @@ ui <- navbarPage(
         color: var(--rve-muted);
         font-style: italic;
       }
+      .ent-filter-box {
+        border: 1px solid var(--rve-border);
+        border-radius: var(--rve-radius);
+        background: var(--rve-surface-soft);
+        padding: 12px 14px;
+        transition: background-color 0.2s ease;
+      }
+      .ent-filter-box.ent-filter-disabled {
+        background: #f2f6f6;
+      }
+      .ent-filter-box.ent-filter-disabled .ent-filter-fields {
+        opacity: 0.62;
+      }
+      .ent-filter-header {
+        margin: 0 0 8px;
+      }
+      .ent-filter-header .form-group,
+      .ent-filter-header .checkbox {
+        margin: 0;
+      }
+      .ent-filter-header label {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        color: var(--rve-navy);
+        font-weight: 800;
+        cursor: pointer;
+      }
+      #ent_filter_enabled {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+        opacity: 0;
+        clip-path: inset(50%);
+      }
+      .ent-filter-header label::before {
+        content: '';
+        width: 38px;
+        height: 22px;
+        flex: 0 0 38px;
+        border-radius: 999px;
+        background: #64748b;
+        transition: background-color 0.2s ease;
+      }
+      .ent-filter-header label::after {
+        content: '';
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(16, 32, 51, 0.28);
+        transition: transform 0.2s ease;
+      }
+      .ent-filter-header label:has(#ent_filter_enabled:checked)::before {
+        background: var(--rve-blue);
+      }
+      .ent-filter-header label:has(#ent_filter_enabled:checked)::after {
+        transform: translateX(16px);
+      }
+      .ent-filter-header label:focus-within::before {
+        outline: 3px solid #2563eb;
+        outline-offset: 2px;
+      }
+      .ent-filter-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .ent-filter-fields .form-group {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        margin-bottom: 0;
+      }
+      .ent-filter-fields .selectize-control {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+      @media (max-width: 768px) {
+        .ent-filter-fields {
+          grid-template-columns: 1fr;
+          gap: 0;
+        }
+      }
       .ent-plot-loading-wrap {
         position: relative;
       }
@@ -1106,9 +1197,22 @@ ui <- navbarPage(
                         rve_control_card(
                           fluidRow(
                             column(3, helpText("Calculates Shannon Entropy to identify highly conserved valleys and hypervariable peaks across the entire gene. Subtype is controlled globally.")),
-                            column(3, selectInput("ent_group_by", "Group by:", choices = NULL)),
-                            column(3, selectInput("ent_gene", "Gene:", choices = NULL)),
-                            column(3, selectInput("ent_group", "Group:", choices = NULL))
+                            column(3,
+                                   div(class = "ent-gene-control",
+                                       selectInput("ent_gene", "Gene:", choices = NULL)
+                                   )
+                            ),
+                            column(6,
+                                   div(class = "ent-filter-box ent-filter-disabled",
+                                       div(class = "ent-filter-header",
+                                           checkboxInput("ent_filter_enabled", "Filter by group", value = FALSE)
+                                       ),
+                                       div(class = "ent-filter-fields",
+                                           selectInput("ent_group_by", "Group by:", choices = NULL),
+                                           selectInput("ent_group", "Group:", choices = NULL)
+                                       )
+                                   )
+                            )
                           ),
                           fluidRow(
                             column(3, sliderInput("ent_min_seqs", "Min Sequences:", min = 0, max = 1000, value = 10, step = 10)),

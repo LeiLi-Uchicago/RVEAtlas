@@ -925,24 +925,69 @@ server <- function(input, output, session) {
     updateSelectInput(session, "pw_clade2", choices = clades_choices, selected = "")
   }, ignoreInit = TRUE)
   
-  observeEvent(list(input$global_subtype, input$variation_type, input$ent_group_by, input$ent_gene), {
+  refresh_ent_group_choices <- function() {
     req(input$global_subtype, input$variation_type, input$ent_group_by, input$ent_gene)
 
     if (usage_duckdb_available()) {
       clade_choices <- usage_distinct_group_values(input$global_subtype, input$variation_type, input$ent_gene, input$ent_group_by)
-      if (length(clade_choices) == 0) return()
-      updateSelectInput(session, "ent_group", choices = c("All", clade_choices), selected = "All")
+    } else {
+      rds_file <- count_cache_file_path(input$global_subtype, input$variation_type, input$ent_gene, input$ent_group_by)
+      df <- get_lazy_table(rds_file)
+      if (is.null(df)) {
+        clade_choices <- character(0)
+      } else {
+        clades <- if(input$ent_group_by %in% colnames(df)) unique(as.character(df[[input$ent_group_by]])) else if("Clade" %in% colnames(df)) unique(as.character(df$Clade)) else "Unknown"
+        clade_choices <- sort(clades)
+      }
+    }
+    selected_group <- if (
+      !is.null(input$ent_group) &&
+      input$ent_group %in% c("All", clade_choices)
+    ) {
+      input$ent_group
+    } else {
+      "All"
+    }
+
+    updateSelectInput(
+      session,
+      "ent_group",
+      choices = c("All", clade_choices),
+      selected = selected_group
+    )
+  }
+
+  observeEvent(list(input$global_subtype, input$variation_type, input$ent_group_by, input$ent_gene), {
+    if (!isTRUE(input$ent_filter_enabled)) {
+      updateSelectInput(session, "ent_group", choices = "All", selected = "All")
       return()
     }
-    
-    rds_file <- count_cache_file_path(input$global_subtype, input$variation_type, input$ent_gene, input$ent_group_by)
-    df <- get_lazy_table(rds_file)
-    if(is.null(df)) return()
-    
-    clades <- if(input$ent_group_by %in% colnames(df)) unique(as.character(df[[input$ent_group_by]])) else if("Clade" %in% colnames(df)) unique(as.character(df$Clade)) else "Unknown"
-    clade_choices <- sort(clades)
-    
-    updateSelectInput(session, "ent_group", choices = c("All", clade_choices), selected = "All")
+    refresh_ent_group_choices()
+  }, ignoreInit = FALSE)
+
+  observe({
+    shinyjs::toggleState("ent_group_by", condition = isTRUE(input$ent_filter_enabled))
+    shinyjs::toggleState("ent_group", condition = isTRUE(input$ent_filter_enabled))
+    shinyjs::toggleClass(
+      selector = ".ent-filter-box",
+      class = "ent-filter-disabled",
+      condition = !isTRUE(input$ent_filter_enabled)
+    )
+  })
+
+  observeEvent(input$ent_filter_enabled, {
+    if (!isTRUE(input$ent_filter_enabled)) {
+      updateSelectInput(session, "ent_group", choices = "All", selected = "All")
+      return()
+    }
+
+    showModal(modalDialog(
+      title = "Group filtering may take longer",
+      "Real-time calculations using a group filter may take longer. Please wait while the results are recalculated.",
+      easyClose = TRUE,
+      footer = modalButton("OK")
+    ))
+    refresh_ent_group_choices()
   }, ignoreInit = TRUE)
   
   observeEvent(list(input$global_subtype, input$variation_type, input$lol_group_by, input$lol_gene), {
@@ -2599,8 +2644,13 @@ server <- function(input, output, session) {
   # ==========================================
   # SERVER: TAB 3 - ENTROPY LANDSCAPE
   # ==========================================
+  ent_effective_group <- reactive({
+    conservation_effective_group(input$ent_filter_enabled, input$ent_group)
+  })
+
   output$ent_plot_title <- renderText({ 
-    clade_text <- if(input$ent_group == "All") paste("All", input$ent_group_by) else paste(input$ent_group_by, input$ent_group)
+    effective_group <- ent_effective_group()
+    clade_text <- if(effective_group == "All") paste("All", input$ent_group_by) else paste(input$ent_group_by, effective_group)
     mode_text <- if(input$variation_type == "AA") "Amino Acid" else "Nucleotide"
     paste(mode_text, "Shannon Entropy Landscape - Subtype", input$global_subtype, "| Gene", input$ent_gene, "|", clade_text) 
   })
@@ -2613,16 +2663,41 @@ server <- function(input, output, session) {
   })
 
   entropy_site_summary <- reactive({
-    req(input$global_subtype, input$variation_type, input$ent_gene, input$ent_group_by, input$ent_group)
+    req(input$global_subtype, input$variation_type, input$ent_gene, input$ent_group_by)
+    effective_group <- ent_effective_group()
 
-    if (usage_duckdb_available()) {
-      ent_data <- usage_entropy_data(input$global_subtype, input$variation_type, input$ent_gene, input$ent_group_by, input$ent_group)
+    if (identical(effective_group, "All")) {
+      ent_data <- conservation_cached_entropy(
+        input$global_subtype,
+        input$variation_type,
+        input$ent_gene
+      )
+      if (is.null(ent_data)) {
+        validate(need(
+          FALSE,
+          paste(
+            "Pre-calculated Conservation data is unavailable for",
+            input$global_subtype,
+            input$variation_type,
+            input$ent_gene,
+            "Please rebuild the cache."
+          )
+        ))
+      }
+    } else if (usage_duckdb_available()) {
+      ent_data <- usage_entropy_data(
+        input$global_subtype,
+        input$variation_type,
+        input$ent_gene,
+        input$ent_group_by,
+        effective_group
+      )
     } else {
       tmp <- ent_usage_data() %>%
         filter(Group == input$global_subtype, Gene == input$ent_gene)
 
-      if (input$ent_group != "All") {
-        tmp <- tmp %>% filter(Clade == input$ent_group)
+      if (effective_group != "All") {
+        tmp <- tmp %>% filter(Clade == effective_group)
       }
 
       ent_data <- tmp %>%
@@ -2706,9 +2781,10 @@ server <- function(input, output, session) {
       )
 
     plot_ly() %>%
-      add_markers(
+      add_trace(
         data = ent_data %>% filter(.data$Variant_Class == "High Variant"),
         x = ~Position_Plot, y = ~Entropy,
+        type = "scattergl",
         mode = "markers+text",
         marker = list(
           color = variant_colors[["High Variant"]],
@@ -2723,9 +2799,10 @@ server <- function(input, output, session) {
         textposition = "top center",
         textfont = list(size = max(9, input$ent_font_size - 3), color = variant_colors[["High Variant"]])
       ) %>%
-      add_markers(
+      add_trace(
         data = ent_data %>% filter(.data$Variant_Class == "Mid Variant"),
         x = ~Position_Plot, y = ~Entropy,
+        type = "scattergl",
         mode = "markers+text",
         marker = list(
           color = variant_colors[["Mid Variant"]],
@@ -2740,9 +2817,10 @@ server <- function(input, output, session) {
         textposition = "top center",
         textfont = list(size = max(9, input$ent_font_size - 4), color = "#9a5c00")
       ) %>%
-      add_markers(
+      add_trace(
         data = ent_data %>% filter(.data$Variant_Class == "Low Variant"),
         x = ~Position_Plot, y = ~Entropy,
+        type = "scattergl",
         mode = "markers+text",
         marker = list(
           color = variant_colors[["Low Variant"]],
@@ -2803,8 +2881,7 @@ server <- function(input, output, session) {
       config(displayModeBar = FALSE)
   })
 
-  entropy_position_value <- function(position_label) {
-    choices <- usage_position_choices(input$global_subtype, input$variation_type, input$ent_gene)
+  entropy_position_value <- function(position_label, choices = NULL) {
     if (length(choices) == 0) return(as.character(position_label))
 
     label_match <- match(as.character(position_label), names(choices))
@@ -2816,9 +2893,9 @@ server <- function(input, output, session) {
     as.character(position_label)
   }
 
-  entropy_site_button <- function(row, level_class) {
+  entropy_site_button <- function(row, level_class, position_choices = NULL) {
     position_label <- as.character(row$Position_Label[[1]])
-    position_value <- entropy_position_value(position_label)
+    position_value <- entropy_position_value(position_label, position_choices)
     payload <- jsonlite::toJSON(
       list(position = position_value, position_label = position_label),
       auto_unbox = TRUE
@@ -2837,6 +2914,19 @@ server <- function(input, output, session) {
   output$ent_variable_sites <- renderUI({
     ent_data <- entropy_site_summary()
     validate(need(nrow(ent_data) > 0, div(class = "entropy-empty", "No entropy data available for these selections.")))
+    position_choices <- if (
+      is_flu_subtype(input$global_subtype) &&
+      identical(input$variation_type, "AA") &&
+      identical(input$ent_gene, "HA")
+    ) {
+      usage_position_choices(
+        input$global_subtype,
+        input$variation_type,
+        input$ent_gene
+      )
+    } else {
+      NULL
+    }
 
     high_sites <- ent_data %>%
       filter(.data$Variant_Class == "High Variant") %>%
@@ -2852,7 +2942,13 @@ server <- function(input, output, session) {
                    div(class = "entropy-empty", "No sites in this range for the current filters.")))
       }
 
-      buttons <- lapply(seq_len(nrow(sites)), function(i) entropy_site_button(sites[i, , drop = FALSE], level_class))
+      buttons <- lapply(seq_len(nrow(sites)), function(i) {
+        entropy_site_button(
+          sites[i, , drop = FALSE],
+          level_class,
+          position_choices = position_choices
+        )
+      })
       div(
         class = "entropy-site-section",
         h4(paste0(title, " (", nrow(sites), ")")),

@@ -17,6 +17,9 @@ library(tidyverse)
 library(shinyWidgets)
 library(shinyjs)
 
+source(file.path("R", "conservation-filter.R"), local = TRUE)
+source(file.path("R", "conservation-cache.R"), local = TRUE)
+
 USE_DUCKDB <- requireNamespace("duckdb", quietly = TRUE) && requireNamespace("DBI", quietly = TRUE)
 if (!USE_DUCKDB) {
   message("Package 'duckdb' is not installed. Falling back to legacy RDS lazy loading.")
@@ -2183,6 +2186,12 @@ usage_single_position <- function(subtype, var_type, gene, group_by, position, a
     adapter_single_position(subtype, var_type, gene, group_by, position, allowed_yms, min_seqs, hide_empty_years, top_n_groups)
   }
 }
+
+# The raw-to-cache startup path above builds the primary RDS/DuckDB data first.
+# Conservation caches are generated here, after all pathogen adapters and query
+# helpers are available, so both fresh raw conversions and normal app startups
+# share the same validation/rebuild workflow.
+ensure_all_conservation_entropy_caches(force = FALSE)
 
 usage_group_limit_summary <- function(subtype, var_type, gene, group_by, position, top_n_groups = NULL) {
   if (missing_subtype(subtype) || is_flu_subtype(subtype)) return(NULL)
