@@ -498,6 +498,36 @@ svg {
   line-height: 1.4;
 }
 
+.local-dataset-sizes {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid rgba(9, 17, 31, 0.10);
+  list-style: none;
+}
+
+.local-dataset-sizes li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.local-dataset-sizes strong {
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.local-dataset-sizes li span {
+  margin: 0;
+  color: var(--teal);
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .section {
   padding: clamp(54px, 7vw, 88px) clamp(20px, 4vw, 72px);
 }
