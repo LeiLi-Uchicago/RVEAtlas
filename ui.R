@@ -567,6 +567,25 @@ ui <- navbarPage(
         color: var(--rve-muted);
         font-style: italic;
       }
+      .struct-note {
+        color: #5f6c7b;
+        font-size: 0.92em;
+        margin-bottom: 10px;
+      }
+      .struct-legend {
+        padding: 8px 4px;
+        font-size: 0.95em;
+        color: #2c3e50;
+      }
+      .ent-basis-note {
+        font-size: 0.9em;
+        color: #5f6c7b;
+        margin-top: 26px;
+      }
+      .ent-basis-warn {
+        color: #b9770e;
+        font-weight: 500;
+      }
       .ent-filter-box {
         border: 1px solid var(--rve-border);
         border-radius: var(--rve-radius);
@@ -1435,6 +1454,14 @@ ui <- navbarPage(
                             )
                           ),
                           fluidRow(
+                            column(6,
+                                   radioButtons("ent_entropy_mode", "Entropy basis:",
+                                                choices = c("Year-balanced (recommended)" = "balanced",
+                                                            "All sequences" = "all"),
+                                                selected = "balanced", inline = TRUE)),
+                            column(6, div(class = "ent-basis-note-wrap", uiOutput("ent_basis_note")))
+                          ),
+                          fluidRow(
                             column(3, sliderInput("ent_min_seqs", "Min Sequences:", min = 0, max = 1000, value = 10, step = 10)),
                             column(3, sliderInput("ent_font_size", "Plot Font Size:", min = 10, max = 24, value = 14, step = 1)),
                             column(3, radioButtons("ent_plot_format", "Format:", choices = c("PNG", "PDF"), inline = TRUE)),
@@ -1449,6 +1476,20 @@ ui <- navbarPage(
                                     div(class = "ent-loading-spinner"),
                                     div("Updating entropy plot...")
                                 )
+                            )
+                        ),
+                        rve_card(
+                            title = "3D Conservation Map",
+                            div(class = "struct-help", uiOutput("ent_structure_status")),
+                            fluidRow(
+                              column(4, selectInput("ent_view_mode", "Structure style:",
+                                                    choices = c("Surface" = "surface", "Cartoon" = "cartoon",
+                                                                "Stick" = "stick", "Sphere" = "sphere"),
+                                                    selected = "surface"))
+                            ),
+                            fluidRow(
+                              column(8, withWaiter(r3dmolOutput("ent_structure", height = "500px"))),
+                              column(4, div(class = "struct-legend", uiOutput("ent_structure_legend")))
                             )
                         ),
                         div(class = "entropy-discovery-panel",
@@ -1667,10 +1708,28 @@ ui <- navbarPage(
                           DTOutput("sp_aa_table")
                       )
                )
+             ),
+             fluidRow(
+               column(12,
+                      rve_card(
+                          title = "3D Structure — Epitopes & Selected Site",
+                          div(class = "struct-help", uiOutput("sp_structure_status")),
+                          fluidRow(
+                            column(4, selectInput("sp_view_mode", "Structure style:",
+                                                  choices = c("Surface" = "surface", "Cartoon" = "cartoon",
+                                                              "Stick" = "stick", "Sphere" = "sphere"),
+                                                  selected = "surface"))
+                          ),
+                          fluidRow(
+                            column(8, withWaiter(r3dmolOutput("sp_structure", height = "500px"))),
+                            column(4, div(class = "struct-legend", uiOutput("sp_structure_legend")))
+                          )
+                      )
+               )
              )
            )
   ),
-  
+
   # ---------------------------------------------------------
   # TAB 2: PAIRWISE COMPARISON
   # ---------------------------------------------------------

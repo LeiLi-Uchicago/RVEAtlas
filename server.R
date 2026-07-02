@@ -2363,6 +2363,75 @@ server <- function(input, output, session) {
     }
   })
   
+  # ---- 3D structure: epitopes + selected site (single-site page) -----------
+  sp_structure_ctx <- reactive({
+    if (identical(input$variation_type, "NT")) return(NULL)
+    cfg <- sv_get_structure_config(input$global_subtype, input$sp_gene)
+    if (is.null(cfg)) return(NULL)
+    rc <- sv_parse_region_chains(cfg$region_chains)
+    num <- sv_load_numbering(input$global_subtype)
+    epi <- sv_load_epitopes(cfg, input$global_subtype, input$sp_gene)
+    epi_res <- sv_epitope_residues(epi, rc)
+    cur <- sv_map_positions(selected_position_base(), num, rc)
+    list(cfg = cfg, rc = rc, epi = epi, epi_res = epi_res, cur = cur)
+  })
+
+  output$sp_structure_status <- renderUI({
+    if (identical(input$variation_type, "NT")) {
+      return(div(class = "struct-note", "3D structure view is available in Amino Acid mode only."))
+    }
+    ctx <- sp_structure_ctx()
+    if (is.null(ctx)) {
+      return(div(class = "struct-note",
+                 sprintf("No 3D structure is configured for %s %s yet.",
+                         input$global_subtype, input$sp_gene)))
+    }
+    pos <- selected_position_base()
+    if (!is.null(ctx$cur) && nrow(ctx$cur) > 0) {
+      msg <- sprintf("Selected position %s is highlighted in red and labeled (chain %s, residue %s).",
+                     pos, ctx$cur$chain[[1]], ctx$cur$resi[[1]])
+    } else {
+      msg <- sprintf("Selected position %s falls outside the modeled region.",
+                     if (is.null(pos)) "" else pos)
+    }
+    div(class = "struct-note",
+        sprintf("Antigenic sites colored on %s. %s", ctx$cfg$title, msg))
+  })
+
+  output$sp_structure <- renderR3dmol({
+    ctx <- sp_structure_ctx()
+    req(!is.null(ctx))
+    pdb <- sv_pdb_text(ctx$cfg)
+    req(!is.null(pdb))
+    cur_label <- NULL
+    if (!is.null(ctx$cur) && nrow(ctx$cur) > 0) {
+      pos <- selected_position_base()
+      num_lab <- ha_numbering_text(input$global_subtype, input$sp_gene, pos, TRUE)
+      cur_label <- if (!is.null(num_lab) && nzchar(num_lab)) num_lab else paste("Pos", pos)
+    }
+    sv_build_viewer(pdb, residues = ctx$epi_res, mode = input$sp_view_mode %||% "surface",
+                    base_color = "#d9c19a",
+                    current = ctx$cur, current_label = cur_label)
+  })
+
+  output$sp_structure_legend <- renderUI({
+    ctx <- sp_structure_ctx()
+    if (is.null(ctx)) return(NULL)
+    leg <- sv_epitope_legend(ctx$epi)
+    items <- lapply(seq_len(nrow(leg)), function(i) {
+      div(style = "display:flex;align-items:center;gap:8px;margin-bottom:4px;",
+          span(style = sprintf("width:14px;height:14px;border-radius:3px;background:%s;display:inline-block;", leg$color[[i]])),
+          span(leg$site[[i]]))
+    })
+    tagList(
+      div(style = "font-weight:600;margin-bottom:6px;", "Antigenic sites"),
+      items,
+      div(style = "display:flex;align-items:center;gap:8px;margin-top:10px;",
+          span(style = "width:14px;height:14px;border-radius:3px;background:#ff2d2d;display:inline-block;"),
+          span("Selected position"))
+    )
+  })
+
   output$sp_range_label <- renderUI({
     req(input$global_subtype, input$sp_gene)
 
@@ -2781,11 +2850,31 @@ server <- function(input, output, session) {
     conservation_effective_group(input$ent_filter_enabled, input$ent_group)
   })
 
-  output$ent_plot_title <- renderText({ 
+  output$ent_plot_title <- renderText({
     effective_group <- ent_effective_group()
     clade_text <- if(effective_group == "All") paste("All", input$ent_group_by) else paste(input$ent_group_by, effective_group)
     mode_text <- if(input$variation_type == "AA") "Amino Acid" else "Nucleotide"
-    paste(mode_text, "Shannon Entropy Landscape - Subtype", input$global_subtype, "| Gene", input$ent_gene, "|", clade_text) 
+    if (identical(input$ent_entropy_mode %||% "balanced", "balanced")) {
+      paste(mode_text, "Year-Balanced Shannon Entropy - Subtype", input$global_subtype, "| Gene", input$ent_gene, "| equal weight per year")
+    } else {
+      paste(mode_text, "Shannon Entropy Landscape - Subtype", input$global_subtype, "| Gene", input$ent_gene, "|", clade_text)
+    }
+  })
+
+  output$ent_basis_note <- renderUI({
+    ent_data <- entropy_site_summary()  # ensures basis state is current
+    mode <- input$ent_entropy_mode %||% "balanced"
+    state <- entropy_basis_state()
+    if (identical(mode, "balanced") && identical(state, "balanced")) {
+      div(class = "ent-basis-note",
+          "Year-balanced: each year contributes equally, correcting for uneven sampling across years. The clade group filter is ignored in this mode.")
+    } else if (identical(mode, "balanced") && identical(state, "all")) {
+      div(class = "ent-basis-note ent-basis-warn",
+          "Year-resolved data is unavailable for this selection — showing all-sequence entropy instead.")
+    } else {
+      div(class = "ent-basis-note",
+          "All-sequence entropy: every sequence contributes equally, so heavily sampled years dominate.")
+    }
   })
 
   entropy_thresholds <- reactive({
@@ -2795,10 +2884,31 @@ server <- function(input, output, session) {
     )
   })
 
+  # Tracks whether the year-balanced basis was requested but unavailable, so the
+  # UI can explain the automatic fallback to all-sequence entropy.
+  entropy_basis_state <- reactiveVal("all")
+
   entropy_site_summary <- reactive({
     req(input$global_subtype, input$variation_type, input$ent_gene, input$ent_group_by)
     effective_group <- ent_effective_group()
+    entropy_mode <- input$ent_entropy_mode %||% "balanced"
 
+    ent_data <- NULL
+
+    # Year-balanced basis: equal weight per year, ignores the clade group filter
+    # (the DuckDB usage table is aggregated per single grouping type, so a
+    # year x clade cross-tab is not available). Falls back to all-sequence.
+    if (identical(entropy_mode, "balanced")) {
+      ent_data <- tryCatch(
+        usage_year_balanced_entropy(input$global_subtype, input$variation_type, input$ent_gene),
+        error = function(e) NULL
+      )
+      entropy_basis_state(if (!is.null(ent_data) && nrow(ent_data) > 0) "balanced" else "all")
+    } else {
+      entropy_basis_state("all")
+    }
+
+    if (is.null(ent_data) || nrow(ent_data) == 0) {
     if (identical(effective_group, "All")) {
       ent_data <- conservation_cached_entropy(
         input$global_subtype,
@@ -2849,6 +2959,7 @@ server <- function(input, output, session) {
           .groups = "drop"
         )
     }
+    }
 
     if (is.null(ent_data)) ent_data <- data.frame(Position = numeric(), Entropy = numeric(), Pos_Total = numeric())
     if (!"Pos_Total" %in% names(ent_data)) ent_data$Pos_Total <- NA_real_
@@ -2876,7 +2987,62 @@ server <- function(input, output, session) {
       filter(is.na(.data$Pos_Total) | .data$Pos_Total >= min_seqs) %>%
       arrange(.data$Position_Order, .data$Position_Label)
   })
-  
+
+  # ---- 3D conservation structure (entropy page) ----------------------------
+  # Colors residues by the currently-filtered Shannon entropy on the configured
+  # PDB structure (H1N1 HA -> 4JTV). Re-renders on filter changes; there is no
+  # r3dmol proxy in this build, so we rebuild the (small) widget each time.
+  ent_structure_colors <- reactive({
+    if (identical(input$variation_type, "NT")) return(NULL)
+    cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene)
+    if (is.null(cfg)) return(NULL)
+    ent <- entropy_site_summary()
+    if (is.null(ent) || nrow(ent) == 0) return(NULL)
+    rc <- sv_parse_region_chains(cfg$region_chains)
+    num <- sv_load_numbering(input$global_subtype)
+    ent_df <- data.frame(Position = ent$Position_Base, Entropy = ent$Entropy)
+    res <- sv_entropy_residue_colors(ent_df, num, rc, n_bins = 9)
+    c(list(cfg = cfg, rc = rc), res)
+  })
+
+  output$ent_structure_status <- renderUI({
+    if (identical(input$variation_type, "NT")) {
+      return(div(class = "struct-note", "3D structure view is available in Amino Acid mode only."))
+    }
+    cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene)
+    if (is.null(cfg)) {
+      return(div(class = "struct-note",
+                 sprintf("No 3D structure is configured for %s %s yet.",
+                         input$global_subtype, input$ent_gene)))
+    }
+    div(class = "struct-note",
+        sprintf("Residues colored by Shannon entropy on %s — blue = conserved, red = variable. Unmodeled residues (signal peptide, gaps) are gray.",
+                cfg$title))
+  })
+
+  output$ent_structure <- renderR3dmol({
+    ctx <- ent_structure_colors()
+    req(!is.null(ctx))
+    pdb <- sv_pdb_text(ctx$cfg)
+    req(!is.null(pdb))
+    sv_build_viewer(pdb, residues = ctx$residues, mode = input$ent_view_mode %||% "surface")
+  })
+
+  output$ent_structure_legend <- renderUI({
+    ctx <- ent_structure_colors()
+    if (is.null(ctx)) return(NULL)
+    stops <- paste(ctx$legend$color, collapse = ",")
+    dom <- ctx$domain
+    tagList(
+      div(style = "font-weight:600;margin-bottom:6px;", "Shannon entropy (bits)"),
+      div(style = sprintf("height:16px;border-radius:3px;background:linear-gradient(to right,%s);", stops)),
+      div(style = "display:flex;justify-content:space-between;font-size:12px;color:#5f6c7b;margin-top:3px;",
+          span(sprintf("%.2f", dom[1])), span("conserved → variable"), span(sprintf("%.2f", dom[2]))),
+      div(style = "margin-top:10px;font-size:12px;color:#5f6c7b;",
+          sprintf("%d residues mapped onto %s.", nrow(ctx$residues), ctx$cfg$title))
+    )
+  })
+
   output$ent_plot <- renderPlotly({
     ent_data <- entropy_site_summary()
     validate(need(nrow(ent_data) > 0, "No data available for these selections after filtering unknowns."))

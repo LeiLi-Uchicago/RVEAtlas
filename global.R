@@ -16,9 +16,11 @@ library(tidyverse)
 # library(leaflet.minicharts)  # Required for the pie charts on the map
 library(shinyWidgets)
 library(shinyjs)
+library(r3dmol)               # 3D protein structure viewer (3Dmol.js htmlwidget)
 
 source(file.path("R", "conservation-filter.R"), local = TRUE)
 source(file.path("R", "conservation-cache.R"), local = TRUE)
+source(file.path("R", "structure-view.R"), local = TRUE)
 
 USE_DUCKDB <- requireNamespace("duckdb", quietly = TRUE) && requireNamespace("DBI", quietly = TRUE)
 if (!USE_DUCKDB) {
@@ -2215,6 +2217,62 @@ usage_pairwise_differences_for_gene <- function(subtype, var_type, gene, group_b
 usage_position_distribution <- function(subtype, var_type, gene, group_by, position, hide_empty_years = FALSE) {
   if (missing_subtype(subtype)) return(data.frame())
   if (is_flu_subtype(subtype)) flu_usage_position_distribution(subtype, var_type, gene, group_by, position, hide_empty_years) else adapter_position_distribution(subtype, var_type, gene, group_by, position, hide_empty_years)
+}
+
+# Year-balanced Shannon entropy. Within each year we compute the residue
+# frequency distribution at a position, then average those per-year
+# distributions with equal weight before computing entropy. This removes the
+# bias introduced when some years/clades are heavily over-represented in the raw
+# sample (which otherwise makes genuinely variable sites look conserved).
+# Uses the unified per-year usage accessor so it works for FLU (DuckDB) and
+# adapter datasets; returns NULL when no year-resolved data is available.
+usage_year_balanced_entropy <- function(subtype, var_type, gene) {
+  if (missing_subtype(subtype)) return(NULL)
+  res <- tryCatch(
+    usage_pairwise_gene_data(subtype, var_type, gene, "Year"),
+    error = function(e) NULL
+  )
+  if (is.null(res) || nrow(res) == 0 ||
+      !all(c("Position", "AminoAcid", "Count", "Clade") %in% names(res))) {
+    return(NULL)
+  }
+
+  df <- res %>%
+    dplyr::filter(
+      !(.data$AminoAcid %in% c("X", "-")),
+      !.data$Clade %in% c("Unknown", "unassigned", "Unassigned"),
+      !is.na(.data$Clade), !is.na(.data$Count)
+    ) %>%
+    dplyr::rename(Year = "Clade")
+  if (nrow(df) == 0) return(NULL)
+
+  df <- df %>%
+    dplyr::group_by(.data$Position, .data$Year) %>%
+    dplyr::mutate(Year_Total = sum(.data$Count, na.rm = TRUE)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(.data$Year_Total > 0) %>%
+    dplyr::mutate(p_year = .data$Count / .data$Year_Total)
+
+  pos_years <- df %>%
+    dplyr::group_by(.data$Position) %>%
+    dplyr::summarise(
+      N_Years = dplyr::n_distinct(.data$Year),
+      Pos_Total = sum(.data$Count),
+      .groups = "drop"
+    )
+
+  df %>%
+    dplyr::group_by(.data$Position, .data$AminoAcid) %>%
+    dplyr::summarise(p_sum = sum(.data$p_year), .groups = "drop") %>%
+    dplyr::left_join(pos_years, by = "Position") %>%
+    dplyr::mutate(p_bal = .data$p_sum / .data$N_Years) %>%
+    dplyr::group_by(.data$Position) %>%
+    dplyr::summarise(
+      Entropy = -sum(ifelse(.data$p_bal > 0, .data$p_bal * log2(.data$p_bal), 0)),
+      Pos_Total = dplyr::first(.data$Pos_Total),
+      N_Years = dplyr::first(.data$N_Years),
+      .groups = "drop"
+    )
 }
 
 usage_entropy_data <- function(subtype, var_type, gene, group_by, clade = "All") {

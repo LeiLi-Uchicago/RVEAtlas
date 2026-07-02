@@ -1,0 +1,10 @@
+# H1 hemagglutinin antigenic sites (Caton et al. 1982, Cell 31:417).
+# Positions are in H1 mature HA1 numbering, which equals the app's H1
+# Numbering_Position and the 4JTV chain-A auth residue number (direct, no offset).
+# `positions` is a comma-separated residue list; edit freely to refine membership.
+subtype	gene	region	site	positions	color	source
+H1N1	HA	HA1	Sa	128,129,156,157,158,159,160,161,162,163,165,166,167	#4363d8	Caton et al. 1982
+H1N1	HA	HA1	Sb	187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206	#3cb44b	Caton et al. 1982
+H1N1	HA	HA1	Ca1	169,170,171,172,173,174,207,208,209,238,239,240	#f58231	Caton et al. 1982
+H1N1	HA	HA1	Ca2	140,141,142,143,144,145,146,147,148,149,224,225,226	#911eb4	Caton et al. 1982
+H1N1	HA	HA1	Cb	74,75,76,77,78	#42d4f4	Caton et al. 1982

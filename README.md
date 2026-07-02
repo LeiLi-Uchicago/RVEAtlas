@@ -49,6 +49,17 @@ The Shiny app uses the navbar pathogen and subtype controls to switch between av
 - **Conservation:** Maps positional Shannon entropy across a gene.
 - Variable-site shortcuts can jump directly into the Single Position Explorer.
 
+### 3D Protein Structure Views
+
+- **Conservation on structure:** Renders the gene product (H1N1 HA on PDB 4JTV) with residues colored by the currently-selected entropy basis (conserved → variable), so conserved cores and variable surfaces are visible in 3D.
+- **Epitope + position mapping:** On the Single Site page, highlights known antigenic sites (H1 Sa/Sb/Ca1/Ca2/Cb) and marks the selected position in red with a residue label.
+- **View styles:** Surface (default), Cartoon, Stick, or Sphere on both pages.
+- **Config-driven:** Structures, chain maps, and epitope sets live in `www/structures/` (`structure_config.tsv`, `epitopes_h1.tsv`); additional pathogens/genes are added by dropping in a PDB and a config row.
+
+### Year-Balanced Conservation
+
+- The Conservation page defaults to a **year-balanced** Shannon entropy that weights each year equally, correcting for uneven sampling across years (which otherwise makes genuinely variable sites look conserved). A toggle switches back to the **all-sequence** basis.
+
 ## Website Updates
 
 The static project website lives in `docs/` and is suitable for GitHub Pages.
@@ -111,7 +122,8 @@ install.packages(c(
   "scales",
   "ggtext",
   "DBI",
-  "duckdb"
+  "duckdb",
+  "r3dmol"
 ))
 ```
 

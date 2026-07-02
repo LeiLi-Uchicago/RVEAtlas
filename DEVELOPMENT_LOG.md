@@ -1,5 +1,26 @@
 # Development Log - FLU Divergence Explorer
 
+## Date: July 2, 2026
+
+### 1. 3D Protein Structure Views (r3dmol)
+- **New Dependency:** Added `r3dmol` (3Dmol.js htmlwidget) to `global.R` and the README install list for client-side molecular rendering.
+- **Bundled Structure:** Added a trimmed single protomer of PDB 4JTV (H1N1 HA, A/California/04/2009) as `www/structures/4JTV_protomer.pdb` (chains A=HA1, B=HA2; waters/ANISOU stripped, NAG glycans kept).
+- **Verified Numbering Map:** Confirmed 4JTV auth residue numbers equal the app's H1 mature `Numbering_Position` with no offset (HA1→chain A residues 7–327, HA2→chain B residues 1–162), via a 1:1 positional merge against `ha_numbering_review_table.csv`.
+- **Config-Driven Framework:** Added `www/structures/structure_config.tsv` (pathogen/subtype/gene → PDB, region→chain map, epitope set) and `www/structures/epitopes_h1.tsv` (Caton 1982 H1 antigenic sites Sa/Sb/Ca1/Ca2/Cb). Other pathogens/genes are add-a-row.
+- **Shared Module:** Added `R/structure-view.R` with pure, unit-tested helpers (position→PDB residue mapping, entropy color binning, epitope loading) plus r3dmol viewer builders; tests in `tests/testthat/test-structure-view.R`.
+- **Conservation Page:** Added a "3D Conservation Map" card that colors residues by the currently-filtered Shannon entropy (blue conserved → red variable) with a gradient legend. Re-renders on filter changes.
+- **Single Site Page:** Added a "3D Structure — Epitopes & Selected Site" card that colors antigenic sites by color-coded legend and highlights the selected position (red, labeled), tracking the existing position selector. Both views are Amino-Acid-mode only.
+
+### 2. Structure View Enhancements
+- **View Modes:** Added a "Structure style" selector (Surface / Cartoon / Stick / Sphere) on both pages, defaulting to Surface. Surface uses disjoint, explicitly-colored per-residue patches — `m_style_surface()` injects `colorscheme = "default"` (CPK), which overrides `color`, so the surface style is built without a colorscheme (`sv_surface_style`).
+- **Consistent Highlight:** The selected residue now uses the same representation as the rest of the view (red patch in surface mode) plus a residue label, instead of a separate sphere overlay. Single Site surface defaults to a wheat base color.
+
+### 3. Year-Balanced Entropy
+- **New Calculation:** Added `usage_year_balanced_entropy()` — within each year it computes the residue frequency distribution at a position, then averages those per-year distributions with equal weight before computing Shannon entropy. This corrects the bias from years/clades that are over-represented in the raw sample (which makes genuinely variable sites look conserved).
+- **Default + Toggle:** The Conservation page now defaults to the year-balanced basis with an "Entropy basis" toggle back to "All sequences", an explanatory note, and automatic fallback (with a warning) when year-resolved data is unavailable. Year-balanced ignores the clade group filter (the DuckDB usage table is aggregated per single grouping type).
+
+---
+
 ## Date: May 11, 2026
 
 ### 1. Raw Data Layout Migration
