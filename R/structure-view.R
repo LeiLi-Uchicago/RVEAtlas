@@ -72,16 +72,23 @@ sv_get_structure_config <- function(subtype, gene, config = sv_load_structure_co
   as.list(hit[1, , drop = FALSE])
 }
 
-# "HA1:A;HA2:B" -> c(HA1 = "A", HA2 = "B")
+# "HA1:A;HA2:B"       -> list(HA1 = "A", HA2 = "B")
+# "HA1:A,C,E;HA2:B,D,F"-> list(HA1 = c("A","C","E"), HA2 = c("B","D","F"))
+# One region can map to several chains (e.g. the three protomers of an HA
+# trimer), so each region resolves to a vector of chain IDs.
 sv_parse_region_chains <- function(str) {
   if (is.null(str) || length(str) == 0 || is.na(str) || !nzchar(str)) {
-    return(stats::setNames(character(0), character(0)))
+    return(stats::setNames(list(), character(0)))
   }
   parts <- trimws(strsplit(str, ";", fixed = TRUE)[[1]])
   parts <- parts[nzchar(parts)]
   kv <- strsplit(parts, ":", fixed = TRUE)
   regions <- vapply(kv, function(x) trimws(x[[1]]), character(1))
-  chains <- vapply(kv, function(x) if (length(x) > 1) trimws(x[[2]]) else NA_character_, character(1))
+  chains <- lapply(kv, function(x) {
+    if (length(x) < 2) return(character(0))
+    ch <- trimws(strsplit(x[[2]], ",", fixed = TRUE)[[1]])
+    ch[nzchar(ch)]
+  })
   stats::setNames(chains, regions)
 }
 
@@ -135,10 +142,19 @@ sv_map_positions <- function(positions, numbering_df, region_chains) {
   idx <- match(positions, numbering_df$Full_HA_Position)
   region <- numbering_df$HA_Region[idx]
   resi <- numbering_df$Numbering_Position[idx]
-  chain <- unname(region_chains[region])
-  keep <- !is.na(idx) & !is.na(chain) & !is.na(resi)
-  data.frame(position = positions[keep], chain = chain[keep], resi = resi[keep],
-             stringsAsFactors = FALSE)
+  keep <- !is.na(idx) & !is.na(resi) & !is.na(region) & region %in% names(region_chains)
+  if (!any(keep)) return(empty)
+  pos_k <- positions[keep]; reg_k <- region[keep]; resi_k <- resi[keep]
+  rows <- lapply(seq_along(pos_k), function(i) {
+    chains <- region_chains[[reg_k[i]]]
+    chains <- chains[!is.na(chains) & nzchar(chains)]
+    if (length(chains) == 0) return(NULL)
+    data.frame(position = pos_k[i], chain = chains, resi = resi_k[i],
+               stringsAsFactors = FALSE)
+  })
+  rows <- rows[!vapply(rows, is.null, logical(1))]
+  if (length(rows) == 0) return(empty)
+  do.call(rbind, rows)
 }
 
 # ---- Entropy -> colors (pure) ---------------------------------------------
@@ -232,11 +248,19 @@ sv_epitope_residues <- function(epitope_df, region_chains) {
   empty <- data.frame(site = character(), chain = character(), resi = numeric(),
                       color = character(), stringsAsFactors = FALSE)
   if (is.null(epitope_df) || nrow(epitope_df) == 0 || length(region_chains) == 0) return(empty)
-  chain <- unname(region_chains[epitope_df$region])
-  keep <- !is.na(chain) & !is.na(epitope_df$position)
-  data.frame(site = epitope_df$site[keep], chain = chain[keep],
-             resi = epitope_df$position[keep], color = epitope_df$color[keep],
-             stringsAsFactors = FALSE)
+  keep <- !is.na(epitope_df$position) & epitope_df$region %in% names(region_chains)
+  if (!any(keep)) return(empty)
+  ep <- epitope_df[keep, , drop = FALSE]
+  rows <- lapply(seq_len(nrow(ep)), function(i) {
+    chains <- region_chains[[ep$region[i]]]
+    chains <- chains[!is.na(chains) & nzchar(chains)]
+    if (length(chains) == 0) return(NULL)
+    data.frame(site = ep$site[i], chain = chains, resi = ep$position[i],
+               color = ep$color[i], stringsAsFactors = FALSE)
+  })
+  rows <- rows[!vapply(rows, is.null, logical(1))]
+  if (length(rows) == 0) return(empty)
+  do.call(rbind, rows)
 }
 
 # Distinct (site, color) legend rows, preserving first-seen order.
@@ -360,21 +384,29 @@ sv_build_viewer <- function(pdb_text, residues = NULL, mode = "surface",
       }
     }
     if (!is.null(current) && nrow(current) > 0) {
-      v <- v %>% r3dmol::m_set_style(
-        sel = r3dmol::m_sel(chain = current$chain[[1]], resi = current$resi),
-        style = sv_style_for_mode(mode, current_color)
-      )
+      for (ch in unique(current$chain)) {
+        sub <- current[current$chain == ch, , drop = FALSE]
+        v <- v %>% r3dmol::m_set_style(
+          sel = r3dmol::m_sel(chain = ch, resi = sub$resi),
+          style = sv_style_for_mode(mode, current_color)
+        )
+      }
     }
   }
 
   if (!is.null(current) && nrow(current) > 0 &&
       !is.null(current_label) && nzchar(current_label)) {
+    # One label only, on the first protomer, to avoid three overlapping tags.
+    label_chain <- current$chain[[1]]
+    label_resi <- current$resi[current$chain == label_chain]
     v <- v %>% r3dmol::m_add_label(
       text = current_label,
-      sel = r3dmol::m_sel(chain = current$chain[[1]], resi = current$resi),
+      sel = r3dmol::m_sel(chain = label_chain, resi = label_resi),
       style = r3dmol::m_style_label(
-        fontSize = 12, fontColor = "white",
-        backgroundColor = current_color, backgroundOpacity = 0.9
+        font = "Arial", fontSize = 18, fontColor = "white",
+        borderThickness = 1.2, borderColor = "#1a1a1a", borderOpacity = 1,
+        backgroundColor = current_color, backgroundOpacity = 0.95,
+        inFront = TRUE
       )
     )
   }

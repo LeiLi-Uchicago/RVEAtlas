@@ -2388,14 +2388,19 @@ server <- function(input, output, session) {
     }
     pos <- selected_position_base()
     if (!is.null(ctx$cur) && nrow(ctx$cur) > 0) {
-      msg <- sprintf("Selected position %s is highlighted in red and labeled (chain %s, residue %s).",
-                     pos, ctx$cur$chain[[1]], ctx$cur$resi[[1]])
+      chains <- paste(unique(ctx$cur$chain), collapse = "/")
+      div(class = "struct-note",
+          sprintf("Antigenic sites colored on %s. Selected position %s is highlighted in red on all protomers (residue %s, chains %s).",
+                  ctx$cfg$title, pos, ctx$cur$resi[[1]], chains))
     } else {
-      msg <- sprintf("Selected position %s falls outside the modeled region.",
-                     if (is.null(pos)) "" else pos)
+      tagList(
+        div(class = "struct-note",
+            sprintf("Antigenic sites colored on %s.", ctx$cfg$title)),
+        div(class = "struct-notice",
+            sprintf("Selected position %s is not resolved in this structure (e.g. signal peptide, unmodeled/disordered region, or outside the crystallized construct), so it cannot be highlighted here.",
+                    if (is.null(pos) || is.na(pos)) "—" else pos))
+      )
     }
-    div(class = "struct-note",
-        sprintf("Antigenic sites colored on %s. %s", ctx$cfg$title, msg))
   })
 
   output$sp_structure <- renderR3dmol({
@@ -2419,16 +2424,17 @@ server <- function(input, output, session) {
     if (is.null(ctx)) return(NULL)
     leg <- sv_epitope_legend(ctx$epi)
     items <- lapply(seq_len(nrow(leg)), function(i) {
-      div(style = "display:flex;align-items:center;gap:8px;margin-bottom:4px;",
-          span(style = sprintf("width:14px;height:14px;border-radius:3px;background:%s;display:inline-block;", leg$color[[i]])),
+      div(style = "display:flex;align-items:center;gap:6px;",
+          span(style = sprintf("width:14px;height:14px;border-radius:3px;background:%s;display:inline-block;flex:none;", leg$color[[i]])),
           span(leg$site[[i]]))
     })
     tagList(
       div(style = "font-weight:600;margin-bottom:6px;", "Antigenic sites"),
-      items,
-      div(style = "display:flex;align-items:center;gap:8px;margin-top:10px;",
-          span(style = "width:14px;height:14px;border-radius:3px;background:#ff2d2d;display:inline-block;"),
-          span("Selected position"))
+      div(style = "display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;",
+          items,
+          div(style = "display:flex;align-items:center;gap:6px;",
+              span(style = "width:14px;height:14px;border-radius:3px;background:#ff2d2d;display:inline-block;flex:none;"),
+              span("Selected position")))
     )
   })
 

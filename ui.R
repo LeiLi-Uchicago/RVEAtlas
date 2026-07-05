@@ -516,6 +516,37 @@ ui <- navbarPage(
         border-radius: var(--rve-radius);
         box-shadow: var(--rve-shadow-soft);
       }
+      .cons-struct-split {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        margin-top: 18px;
+      }
+      .cons-struct-split > .cons-split-vars,
+      .cons-struct-split > .cons-split-struct {
+        min-width: 0;
+        display: flex;
+      }
+      .cons-struct-split .entropy-discovery-panel,
+      .cons-struct-split > .cons-split-vars > .rve-bslib-card,
+      .cons-struct-split > .cons-split-struct > .rve-bslib-card {
+        margin-top: 0;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+      }
+      @media (min-width: 1200px) {
+        .cons-struct-split {
+          flex-direction: row;
+          align-items: stretch;
+        }
+        .cons-struct-split > .cons-split-vars {
+          flex: 3 1 0;
+        }
+        .cons-struct-split > .cons-split-struct {
+          flex: 2 1 0;
+        }
+      }
       .entropy-site-section {
         margin-top: 12px;
       }
@@ -576,6 +607,16 @@ ui <- navbarPage(
         padding: 8px 4px;
         font-size: 0.95em;
         color: #2c3e50;
+      }
+      .struct-notice {
+        margin-top: 8px;
+        padding: 8px 12px;
+        background: #fff8e6;
+        border: 1px solid #f0c674;
+        border-left: 4px solid #e0a800;
+        border-radius: 6px;
+        color: #7a5b00;
+        font-size: 0.92em;
       }
       .ent-basis-note {
         font-size: 0.9em;
@@ -1478,24 +1519,28 @@ ui <- navbarPage(
                                 )
                             )
                         ),
-                        rve_card(
-                            title = "3D Conservation Map",
-                            div(class = "struct-help", uiOutput("ent_structure_status")),
-                            fluidRow(
-                              column(4, selectInput("ent_view_mode", "Structure style:",
-                                                    choices = c("Surface" = "surface", "Cartoon" = "cartoon",
-                                                                "Stick" = "stick", "Sphere" = "sphere"),
-                                                    selected = "surface"))
+                        div(class = "cons-struct-split",
+                            div(class = "cons-split-vars",
+                                div(class = "entropy-discovery-panel",
+                                    h3("Variable Sites", style = "margin-top: 0; font-weight: bold; color: #2c3e50;"),
+                                    p("Click a position to inspect its full distribution in the Single Site Explorer.", style = "color: #5f6c7b; margin-bottom: 8px;"),
+                                    uiOutput("ent_variable_sites")
+                                )
                             ),
-                            fluidRow(
-                              column(8, withWaiter(r3dmolOutput("ent_structure", height = "500px"))),
-                              column(4, div(class = "struct-legend", uiOutput("ent_structure_legend")))
+                            div(class = "cons-split-struct",
+                                rve_card(
+                                    title = "3D Conservation Map",
+                                    div(class = "struct-help", uiOutput("ent_structure_status")),
+                                    fluidRow(
+                                      column(6, selectInput("ent_view_mode", "Structure style:",
+                                                            choices = c("Surface" = "surface", "Cartoon" = "cartoon",
+                                                                        "Stick" = "stick", "Sphere" = "sphere"),
+                                                            selected = "surface"))
+                                    ),
+                                    div(class = "struct-legend", uiOutput("ent_structure_legend")),
+                                    withWaiter(r3dmolOutput("ent_structure", height = "500px"))
+                                )
                             )
-                        ),
-                        div(class = "entropy-discovery-panel",
-                            h3("Variable Sites", style = "margin-top: 0; font-weight: bold; color: #2c3e50;"),
-                            p("Click a position to inspect its full distribution in the Single Site Explorer.", style = "color: #5f6c7b; margin-bottom: 8px;"),
-                            uiOutput("ent_variable_sites")
                         )
                       )
              ),
@@ -1704,28 +1749,32 @@ ui <- navbarPage(
                               plotlyOutput("sp_overall_aa_bar", height = "120px")
                           ),
                           tags$hr(style = "border-top: 1px solid #d8e3ec; margin: 4px 0 28px 0;"),
-                          withWaiter(plotlyOutput("sp_aa_plot", height = "500px")),
-                          DTOutput("sp_aa_table")
+                          withWaiter(plotlyOutput("sp_aa_plot", height = "500px"))
                       )
                )
              ),
-             fluidRow(
-               column(12,
-                      rve_card(
-                          title = "3D Structure — Epitopes & Selected Site",
-                          div(class = "struct-help", uiOutput("sp_structure_status")),
-                          fluidRow(
-                            column(4, selectInput("sp_view_mode", "Structure style:",
-                                                  choices = c("Surface" = "surface", "Cartoon" = "cartoon",
-                                                              "Stick" = "stick", "Sphere" = "sphere"),
-                                                  selected = "surface"))
-                          ),
-                          fluidRow(
-                            column(8, withWaiter(r3dmolOutput("sp_structure", height = "500px"))),
-                            column(4, div(class = "struct-legend", uiOutput("sp_structure_legend")))
-                          )
-                      )
-               )
+             div(class = "cons-struct-split",
+                 div(class = "cons-split-vars",
+                     rve_card(
+                         title = "Amino Acid Distribution Table",
+                         class = "analysis-panel rve-table-card",
+                         DTOutput("sp_aa_table")
+                     )
+                 ),
+                 div(class = "cons-split-struct",
+                     rve_card(
+                         title = "3D Structure — Epitopes & Selected Site",
+                         div(class = "struct-help", uiOutput("sp_structure_status")),
+                         fluidRow(
+                           column(6, selectInput("sp_view_mode", "Structure style:",
+                                                 choices = c("Surface" = "surface", "Cartoon" = "cartoon",
+                                                             "Stick" = "stick", "Sphere" = "sphere"),
+                                                 selected = "surface"))
+                         ),
+                         div(class = "struct-legend", uiOutput("sp_structure_legend")),
+                         withWaiter(r3dmolOutput("sp_structure", height = "500px"))
+                     )
+                 )
              )
            )
   ),

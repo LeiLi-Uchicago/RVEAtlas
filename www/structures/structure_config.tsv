@@ -1,2 +1,2 @@
 pathogen	subtype	gene	pdb_id	structure_file	region_chains	resi_from_numbering	epitope_file	title
-FLU	H1N1	HA	4JTV	4JTV_protomer.pdb	HA1:A;HA2:B	TRUE	epitopes_h1.tsv	H1N1 HA - A/California/04/2009 (PDB 4JTV)
+FLU	H1N1	HA	4JTV	4JTV_trimer.pdb	HA1:A,C,E;HA2:B,D,F	TRUE	epitopes_h1.tsv	H1N1 HA trimer - A/California/04/2009 (PDB 4JTV, biological assembly 1)
