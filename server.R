@@ -2371,6 +2371,8 @@ server <- function(input, output, session) {
     rc <- sv_parse_region_chains(cfg$region_chains)
     num <- sv_load_numbering(input$global_subtype)
     epi <- sv_load_epitopes(cfg, input$global_subtype, input$sp_gene)
+    # Filter epitopes by selected groups
+    epi <- sv_filter_epitopes_by_group(epi, groups = input$sp_epitope_groups)
     epi_res <- sv_epitope_residues(epi, rc)
     cur <- sv_map_positions(selected_position_base(), num, rc)
     list(cfg = cfg, rc = rc, epi = epi, epi_res = epi_res, cur = cur)
@@ -2383,6 +2385,20 @@ server <- function(input, output, session) {
     if (nrow(structs) < 2) return(NULL)
     selectInput("sp_structure_variant", "Structure:",
                 choices = stats::setNames(structs$pdb_id, structs$label))
+  })
+
+  # Epitope group checkboxes, shown only when epitopes have groups.
+  output$sp_epitope_groups_ui <- renderUI({
+    if (identical(input$variation_type, "NT")) return(NULL)
+    cfg <- sv_get_structure_config(input$global_subtype, input$sp_gene, pdb_id = input$sp_structure_variant)
+    if (is.null(cfg)) return(NULL)
+    epi <- sv_load_epitopes(cfg, input$global_subtype, input$sp_gene)
+    groups <- sv_epitope_groups(epi)
+    if (length(groups) == 0) return(NULL)
+    div(style = "margin-top: 10px; padding: 8px; background: #f5f5f5; border-radius: 4px;",
+        div(style = "font-size: 0.9em; font-weight: bold; margin-bottom: 6px;", "Epitope groups:"),
+        checkboxGroupInput("sp_epitope_groups", NULL, choices = groups, selected = groups,
+                          inline = TRUE))
   })
 
   output$sp_structure_status <- renderUI({
@@ -3042,6 +3058,20 @@ server <- function(input, output, session) {
     if (nrow(structs) < 2) return(NULL)
     selectInput("ent_structure_variant", "Structure:",
                 choices = stats::setNames(structs$pdb_id, structs$label))
+  })
+
+  # Epitope group checkboxes, shown only when epitopes have groups.
+  output$ent_epitope_groups_ui <- renderUI({
+    if (identical(input$variation_type, "NT")) return(NULL)
+    cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene, pdb_id = input$ent_structure_variant)
+    if (is.null(cfg)) return(NULL)
+    epi <- sv_load_epitopes(cfg, input$global_subtype, input$ent_gene)
+    groups <- sv_epitope_groups(epi)
+    if (length(groups) == 0) return(NULL)
+    div(style = "margin-top: 10px; padding: 8px; background: #f5f5f5; border-radius: 4px;",
+        div(style = "font-size: 0.9em; font-weight: bold; margin-bottom: 6px;", "Epitope groups:"),
+        checkboxGroupInput("ent_epitope_groups", NULL, choices = groups, selected = groups,
+                          inline = TRUE))
   })
 
   output$ent_structure <- renderR3dmol({

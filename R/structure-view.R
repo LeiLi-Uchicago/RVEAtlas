@@ -238,11 +238,12 @@ sv_entropy_residue_colors <- function(entropy_df, numbering_df, region_chains,
 
 sv_empty_epitopes <- function() {
   data.frame(site = character(), region = character(), position = numeric(),
-             color = character(), stringsAsFactors = FALSE)
+             color = character(), group = character(), stringsAsFactors = FALSE)
 }
 
 # Loads the epitope table referenced by a structure-config row and expands the
-# comma-separated `positions` field into one row per residue.
+# comma-separated `positions` field into one row per residue. Preserves `group`
+# column if present for filtering by epitope group.
 sv_load_epitopes <- function(config_row, subtype, gene, dir = sv_structure_dir()) {
   if (is.null(config_row)) return(sv_empty_epitopes())
   ef <- config_row$epitope_file
@@ -252,35 +253,58 @@ sv_load_epitopes <- function(config_row, subtype, gene, dir = sv_structure_dir()
   df <- sv_read_tsv(path)
   need <- c("subtype", "gene", "region", "site", "positions", "color")
   if (!all(need %in% names(df))) return(sv_empty_epitopes())
+  has_group <- "group" %in% names(df)
   df <- df[df$subtype == as.character(subtype) & df$gene == as.character(gene), , drop = FALSE]
   if (nrow(df) == 0) return(sv_empty_epitopes())
   rows <- lapply(seq_len(nrow(df)), function(i) {
     pos <- suppressWarnings(as.numeric(strsplit(gsub("[[:space:]]", "", df$positions[i]), ",", fixed = TRUE)[[1]]))
     pos <- pos[!is.na(pos)]
     if (length(pos) == 0) return(NULL)
-    data.frame(site = df$site[i], region = df$region[i], position = pos,
-               color = df$color[i], stringsAsFactors = FALSE)
+    res <- data.frame(site = df$site[i], region = df$region[i], position = pos,
+                      color = df$color[i], stringsAsFactors = FALSE)
+    if (has_group) res$group <- df$group[i]
+    res
   })
   rows <- rows[!vapply(rows, is.null, logical(1))]
   if (length(rows) == 0) return(sv_empty_epitopes())
   do.call(rbind, rows)
 }
 
+# List all unique epitope groups in a loaded epitope table.
+sv_epitope_groups <- function(epitope_df) {
+  if (is.null(epitope_df) || nrow(epitope_df) == 0 || !"group" %in% names(epitope_df)) {
+    return(character(0))
+  }
+  sort(unique(epitope_df$group[!is.na(epitope_df$group) & nzchar(epitope_df$group)]))
+}
+
+# Filter epitope table by group(s). If groups is NULL/empty, all epitopes returned.
+sv_filter_epitopes_by_group <- function(epitope_df, groups = NULL) {
+  if (is.null(epitope_df) || nrow(epitope_df) == 0) return(epitope_df)
+  if (is.null(groups) || length(groups) == 0) return(epitope_df)
+  if (!"group" %in% names(epitope_df)) return(epitope_df)
+  epitope_df[epitope_df$group %in% groups, , drop = FALSE]
+}
+
 # Epitope table -> viewer residues. Epitope positions are already in numbering
 # space (= PDB resi when resi_from_numbering is TRUE); region -> chain.
+# Preserves `group` column if present.
 sv_epitope_residues <- function(epitope_df, region_chains) {
   empty <- data.frame(site = character(), chain = character(), resi = numeric(),
-                      color = character(), stringsAsFactors = FALSE)
+                      color = character(), group = character(), stringsAsFactors = FALSE)
   if (is.null(epitope_df) || nrow(epitope_df) == 0 || length(region_chains) == 0) return(empty)
   keep <- !is.na(epitope_df$position) & epitope_df$region %in% names(region_chains)
   if (!any(keep)) return(empty)
   ep <- epitope_df[keep, , drop = FALSE]
+  has_group <- "group" %in% names(ep)
   rows <- lapply(seq_len(nrow(ep)), function(i) {
     chains <- region_chains[[ep$region[i]]]
     chains <- chains[!is.na(chains) & nzchar(chains)]
     if (length(chains) == 0) return(NULL)
-    data.frame(site = ep$site[i], chain = chains, resi = ep$position[i],
-               color = ep$color[i], stringsAsFactors = FALSE)
+    res <- data.frame(site = ep$site[i], chain = chains, resi = ep$position[i],
+                      color = ep$color[i], stringsAsFactors = FALSE)
+    if (has_group) res$group <- ep$group[i]
+    res
   })
   rows <- rows[!vapply(rows, is.null, logical(1))]
   if (length(rows) == 0) return(empty)

@@ -1538,6 +1538,7 @@ ui <- navbarPage(
                                                             selected = "surface")),
                                       column(6, uiOutput("ent_structure_variant_ui"))
                                     ),
+                                    uiOutput("ent_epitope_groups_ui"),
                                     div(class = "struct-legend", uiOutput("ent_structure_legend")),
                                     withWaiter(r3dmolOutput("ent_structure", height = "500px"))
                                 )
@@ -1773,6 +1774,7 @@ ui <- navbarPage(
                                                  selected = "surface")),
                            column(6, uiOutput("sp_structure_variant_ui"))
                          ),
+                         uiOutput("sp_epitope_groups_ui"),
                          div(class = "struct-legend", uiOutput("sp_structure_legend")),
                          withWaiter(r3dmolOutput("sp_structure", height = "500px"))
                      )
