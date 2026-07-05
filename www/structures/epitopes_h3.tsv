@@ -1,0 +1,11 @@
+# H3 hemagglutinin antigenic sites A-E (Wiley, Wilson & Skehel 1981, Nature 289:373;
+# Wilson & Cox 1990, Annu Rev Immunol 8:737). Positions are in H3 mature HA1
+# numbering, which equals the app's H3 Numbering_Position and the 4HMG chain-A/C/E
+# auth residue number (direct, no offset).
+# `positions` is a comma-separated residue list; edit freely to refine membership.
+subtype	gene	region	site	positions	color	source
+H3N2	HA	HA1	A	122,124,126,130,131,132,133,135,137,138,140,142,143,144,145,146,150,152,168	#e6194b	Wiley et al. 1981
+H3N2	HA	HA1	B	128,129,155,156,157,158,159,160,163,164,165,186,187,188,189,190,192,193,194,196,197,198,199,201	#3cb44b	Wiley et al. 1981
+H3N2	HA	HA1	C	44,45,46,47,48,50,51,53,54,273,275,276,278,279,280,294,297,299,300,304,305,307,308,309,310,311,312	#4363d8	Wiley et al. 1981
+H3N2	HA	HA1	D	96,102,103,117,121,167,170,171,172,173,174,175,176,177,179,182,201,203,207,208,209,212,213,214,215,216,217,218,219,226,227,228,229,230,238,240,242,244,246,247,248	#f58231	Wiley et al. 1981
+H3N2	HA	HA1	E	57,59,62,63,67,75,78,80,81,82,83,86,87,88,91,92,94,109,260,261,262,265	#911eb4	Wiley et al. 1981

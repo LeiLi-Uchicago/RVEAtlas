@@ -2996,7 +2996,7 @@ server <- function(input, output, session) {
 
   # ---- 3D conservation structure (entropy page) ----------------------------
   # Colors residues by the currently-filtered Shannon entropy on the configured
-  # PDB structure (H1N1 HA -> 4JTV). Re-renders on filter changes; there is no
+  # PDB structure (H1N1 HA -> 4JTV, H3N2 HA -> 4HMG). Re-renders on filter changes; there is no
   # r3dmol proxy in this build, so we rebuild the (small) widget each time.
   ent_structure_colors <- reactive({
     if (identical(input$variation_type, "NT")) return(NULL)
