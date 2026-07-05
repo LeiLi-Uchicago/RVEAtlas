@@ -1871,6 +1871,75 @@ server <- function(input, output, session) {
     choices
   })
 
+  # Prettify an epitope site code for display (e.g. "central_stalk" -> "Central
+  # Stalk"). Short antigenic-site codes (Sa, Ca1, RBS, A, B, ...) are kept as-is.
+  sp_pretty_site <- function(s) {
+    map <- c(anchor = "Anchor", central_stalk = "Central Stalk",
+             trimer_interface = "Trimer Interface")
+    out <- unname(map[s])
+    out[is.na(out)] <- s[is.na(out)]
+    out
+  }
+
+  # Build a DISPLAY-ONLY copy of the position choices where each dropdown label is
+  # annotated with colored badges naming the epitope site(s) that contain the
+  # position (e.g. "165  [Sa]  [Ca2]"). Only the shown label (names) is changed;
+  # the option VALUE (the plain position key) is preserved so all downstream logic
+  # -- selected_position_label(), selected_position_base(), lookups -- stays clean.
+  # The badge HTML is rendered by the selectize `render` option set in the UI.
+  # Applied only for HA amino-acid choices where epitope data + numbering exist.
+  sp_annotate_choices_with_epitopes <- function(choices, subtype, gene, var_type, pdb_id) {
+    if (length(choices) == 0) return(choices)
+    if (!identical(var_type, "AA") || !identical(gene, "HA")) return(choices)
+    cfg <- sv_get_structure_config(subtype, gene, pdb_id = pdb_id)
+    if (is.null(cfg)) return(choices)
+    epi <- tryCatch(sv_load_epitopes(cfg, subtype, gene), error = function(e) data.frame())
+    if (is.null(epi) || nrow(epi) == 0) return(choices)
+    if (is.null(HA_NUMBERING_LOOKUP) || nrow(HA_NUMBERING_LOOKUP) == 0) return(choices)
+
+    # "region:structural_position" -> unique (site, color) pairs at that residue
+    epi_pos <- suppressWarnings(as.numeric(epi$position))
+    epi_key <- paste0(epi$region, ":", epi_pos)
+    site_lookup <- tapply(seq_len(nrow(epi)), epi_key, function(idx) {
+      d <- epi[idx, , drop = FALSE]
+      keep <- !duplicated(d$site)
+      list(sites = d$site[keep], colors = d$color[keep])
+    }, simplify = FALSE)
+
+    # subtype-scoped app-position -> structural position + region
+    numbering <- HA_NUMBERING_LOOKUP[HA_NUMBERING_LOOKUP$Subtype == subtype, , drop = FALSE]
+    by_app_pos    <- as.character(numbering$Full_HA_Position)
+    struct_pos_vec <- numbering$Numbering_Position
+    struct_reg_vec <- numbering$HA_Region
+
+    values <- unname(choices)
+    labels <- names(choices)
+    if (is.null(labels)) labels <- values
+
+    new_labels <- vapply(seq_along(values), function(i) {
+      base_label <- labels[[i]]
+      app_pos <- suppressWarnings(as.numeric(values[[i]]))
+      if (is.na(app_pos)) return(base_label)
+      j <- match(as.character(app_pos), by_app_pos)
+      if (is.na(j)) return(base_label)
+      struct_pos <- struct_pos_vec[[j]]
+      if (is.null(struct_pos) || is.na(struct_pos)) return(base_label)
+      info <- site_lookup[[paste0(struct_reg_vec[[j]], ":", struct_pos)]]
+      if (is.null(info) || length(info$sites) == 0) return(base_label)
+      badges <- vapply(seq_along(info$sites), function(k) {
+        sprintf(
+          paste0('<span style="display:inline-block;background:%s;color:#fff;',
+                 'border-radius:3px;padding:0 5px;margin-left:4px;font-size:0.8em;',
+                 'line-height:1.5;vertical-align:middle;">%s</span>'),
+          info$colors[[k]], sp_pretty_site(info$sites[[k]])
+        )
+      }, character(1))
+      paste0(base_label, paste(badges, collapse = ""))
+    }, character(1))
+
+    stats::setNames(values, new_labels)
+  }
+
   selected_position_label <- reactive({
     choices <- sp_position_choices()
     current <- as.character(input$sp_position)
@@ -1882,7 +1951,7 @@ server <- function(input, output, session) {
     suppressWarnings(as.numeric(sub("\\+.*$", "", selected_position_label())))
   })
 
-  observeEvent(list(input$global_subtype, input$variation_type, input$sp_gene), {
+  observeEvent(list(input$global_subtype, input$variation_type, input$sp_gene, input$sp_structure_variant), {
     choices <- sp_position_choices()
     if (length(choices) == 0) return(invisible(NULL))
     pending_position <- pending_sp_position_jump()
@@ -1892,7 +1961,10 @@ server <- function(input, output, session) {
     } else {
       selected <- if (!is.null(input$sp_position) && input$sp_position %in% unname(choices)) input$sp_position else unname(choices)[1]
     }
-    updateSelectizeInput(session, "sp_position", choices = choices, selected = selected, server = TRUE)
+    display_choices <- sp_annotate_choices_with_epitopes(
+      choices, input$global_subtype, input$sp_gene, input$variation_type, input$sp_structure_variant
+    )
+    updateSelectizeInput(session, "sp_position", choices = display_choices, selected = selected, server = TRUE)
   }, ignoreInit = FALSE)
 
   # This observer triggers when any relevant input changes. It performs the heavy
@@ -3425,7 +3497,10 @@ server <- function(input, output, session) {
     updateTabsetPanel(session, "main_nav", selected = "single_position")
     if (identical(scalar_input(input$sp_gene), jump_gene)) {
       if (length(position_choices) > 0) {
-        updateSelectizeInput(session, "sp_position", choices = position_choices, selected = position_value, server = FALSE)
+        display_choices <- sp_annotate_choices_with_epitopes(
+          position_choices, jump_subtype, jump_gene, jump_var_type, input$sp_structure_variant
+        )
+        updateSelectizeInput(session, "sp_position", choices = display_choices, selected = position_value, server = FALSE)
       } else {
         updateSelectizeInput(session, "sp_position", choices = position_value, selected = position_value, server = FALSE)
       }

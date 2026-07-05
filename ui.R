@@ -1733,7 +1733,16 @@ ui <- navbarPage(
                                                     options = list(
                                                       placeholder = "Type/select position",
                                                       create = FALSE,
-                                                      maxOptions = 1000
+                                                      maxOptions = 1000,
+                                                      allowEmptyOption = FALSE,
+                                                      render = I("{
+                                                        option: function(item, escape) {
+                                                          return '<div class=\"option\">' + item.label + '</div>';
+                                                        },
+                                                        item: function(item, escape) {
+                                                          return '<div class=\"item\">' + item.label + '</div>';
+                                                        }
+                                                      }")
                                                     )),
                                      div(class = "sp-numbering-hint", uiOutput("sp_numbering_label")),
                                      div(class = "sp-epitope-info", uiOutput("sp_position_epitope_info"))
