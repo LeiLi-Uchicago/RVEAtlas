@@ -2401,6 +2401,34 @@ server <- function(input, output, session) {
                           inline = TRUE))
   })
 
+  # Color legend showing active epitope groups and their sites
+  output$sp_epitope_color_legend_ui <- renderUI({
+    if (identical(input$variation_type, "NT")) return(NULL)
+    if (is.null(input$sp_epitope_groups) || length(input$sp_epitope_groups) == 0) return(NULL)
+    cfg <- sv_get_structure_config(input$global_subtype, input$sp_gene, pdb_id = input$sp_structure_variant)
+    if (is.null(cfg)) return(NULL)
+    epi <- sv_load_epitopes(cfg, input$global_subtype, input$sp_gene)
+    if (nrow(epi) == 0) return(NULL)
+    # Build legend for selected groups only
+    legend_items <- lapply(input$sp_epitope_groups, function(group) {
+      group_epi <- epi[epi$group == group,]
+      if (nrow(group_epi) == 0) return(NULL)
+      sites <- sort(unique(group_epi$site))
+      color <- unique(group_epi$color)[1]
+      div(style = "display: flex; align-items: center; gap: 8px; margin-bottom: 6px;",
+          div(style = sprintf("width: 16px; height: 16px; background: %s; border: 1px solid #ccc; border-radius: 2px;", color)),
+          div(style = "font-size: 0.85em;",
+              span(style = "font-weight: bold;", group, ":"),
+              " ",
+              span(paste(sites, collapse = ", "))))
+    })
+    legend_items <- legend_items[!vapply(legend_items, is.null, logical(1))]
+    if (length(legend_items) == 0) return(NULL)
+    div(style = "margin-top: 8px; padding: 8px; background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 4px;",
+        div(style = "font-size: 0.85em; font-weight: bold; margin-bottom: 6px; color: #333;", "Active epitopes:"),
+        do.call(tagList, legend_items))
+  })
+
   output$sp_structure_status <- renderUI({
     if (identical(input$variation_type, "NT")) {
       return(div(class = "struct-note", "3D structure view is available in Amino Acid mode only."))
@@ -2412,11 +2440,23 @@ server <- function(input, output, session) {
                          input$global_subtype, input$sp_gene)))
     }
     pos <- selected_position_base()
+    # Check which epitope groups the selected position belongs to
+    epitope_groups <- if (!is.na(pos)) {
+      sv_position_epitope_groups(pos, "HA1", ctx$epi)
+    } else {
+      character(0)
+    }
+    epitope_note <- if (length(epitope_groups) > 0) {
+      paste0(" [", paste(epitope_groups, collapse = " + "), "]")
+    } else {
+      ""
+    }
+
     if (!is.null(ctx$cur) && nrow(ctx$cur) > 0) {
       chains <- paste(unique(ctx$cur$chain), collapse = "/")
       div(class = "struct-note",
-          sprintf("Antigenic sites colored on %s. Selected position %s is highlighted in red on all protomers (residue %s, chains %s).",
-                  ctx$cfg$title, pos, ctx$cur$resi[[1]], chains))
+          sprintf("Antigenic sites colored on %s. Selected position %s%s is highlighted in red on all protomers (residue %s, chains %s).",
+                  ctx$cfg$title, pos, epitope_note, ctx$cur$resi[[1]], chains))
     } else {
       tagList(
         div(class = "struct-note",
@@ -2487,7 +2527,7 @@ server <- function(input, output, session) {
   
   output$sp_numbering_label <- renderUI({
     req(input$global_subtype, input$sp_gene, input$sp_position, input$variation_type)
-    
+
     # Only calculate structural numbering for Amino Acids in the HA gene
     if (input$variation_type == "AA" && input$sp_gene == "HA") {
       pos <- selected_position_base()
@@ -2502,7 +2542,52 @@ server <- function(input, output, session) {
         return(span(numbering, style = style))
       }
     }
-    return(NULL)
+  })
+
+  output$sp_position_epitope_info <- renderUI({
+    if (identical(input$variation_type, "NT")) return(NULL)
+    cfg <- sv_get_structure_config(input$global_subtype, input$sp_gene, pdb_id = input$sp_structure_variant)
+    if (is.null(cfg)) return(NULL)
+    epi <- sv_load_epitopes(cfg, input$global_subtype, input$sp_gene)
+    if (nrow(epi) == 0) return(NULL)
+
+    pos <- selected_position_base()
+    if (is.na(pos)) return(NULL)
+
+    # Convert app position to structural numbering for this subtype
+    if (!exists("HA_NUMBERING_LOOKUP") || nrow(HA_NUMBERING_LOOKUP) == 0) return(NULL)
+    hit <- HA_NUMBERING_LOOKUP[
+      HA_NUMBERING_LOOKUP$Subtype == input$global_subtype &
+        HA_NUMBERING_LOOKUP$Full_HA_Position == pos,
+      ,
+      drop = FALSE
+    ]
+    if (nrow(hit) == 0) return(NULL)
+    struct_pos <- hit$Numbering_Position[[1]]
+    struct_region <- hit$HA_Region[[1]]
+
+    # Check which epitope groups contain this position using structural numbering
+    groups <- sv_position_epitope_groups(struct_pos, struct_region, epi)
+    if (length(groups) == 0) return(NULL)
+
+    # Get the sites and colors for display
+    sites_info <- lapply(groups, function(g) {
+      group_epi <- epi[epi$group == g & epi$position == struct_pos & epi$region == struct_region,]
+      if (nrow(group_epi) == 0) return(NULL)
+      sites <- paste(unique(group_epi$site), collapse = ", ")
+      data.frame(group = g, sites = sites, stringsAsFactors = FALSE)
+    })
+    sites_info <- do.call(rbind, Filter(Negate(is.null), sites_info))
+
+    if (nrow(sites_info) == 0) return(NULL)
+
+    # Build display
+    info_text <- sprintf(
+      "Position %s is in: %s",
+      pos,
+      paste(sprintf("%s [%s]", sites_info$sites, sites_info$group), collapse = ", ")
+    )
+    span(style = "color: #2c3e50; font-weight: 500;", info_text)
   })
   
   # ==========================================

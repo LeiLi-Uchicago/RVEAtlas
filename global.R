@@ -1346,6 +1346,8 @@ load_ha_numbering_lookup <- function(path = ha_numbering_source_path()) {
     Subtype = character(),
     Gene = character(),
     Full_HA_Position = numeric(),
+    HA_Region = character(),
+    Numbering_Position = numeric(),
     Numbering_Label = character(),
     stringsAsFactors = FALSE
   )
@@ -1369,6 +1371,8 @@ load_ha_numbering_lookup <- function(path = ha_numbering_source_path()) {
     Subtype = as.character(mapping$Subtype),
     Gene = "HA",
     Full_HA_Position = suppressWarnings(as.numeric(mapping$Full_HA_Position)),
+    HA_Region = as.character(mapping$HA_Region),
+    Numbering_Position = suppressWarnings(as.numeric(mapping$Numbering_Position)),
     Numbering_Label = paste(label_prefix, mapping$HA_Region, mapping$Numbering_Position),
     stringsAsFactors = FALSE
   )

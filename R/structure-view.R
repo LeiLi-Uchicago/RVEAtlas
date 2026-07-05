@@ -321,6 +321,17 @@ sv_epitope_legend <- function(epitope_df) {
              stringsAsFactors = FALSE)
 }
 
+# Find which epitope group(s) contain a specific position in a given region.
+# Returns character vector of group names, or empty if position is not in any epitope.
+sv_position_epitope_groups <- function(position, region, epitope_df) {
+  if (is.null(epitope_df) || nrow(epitope_df) == 0) return(character(0))
+  if (!"group" %in% names(epitope_df)) return(character(0))
+  if (is.na(position) || is.na(region)) return(character(0))
+  hits <- epitope_df[epitope_df$position == position & epitope_df$region == region, ]
+  if (nrow(hits) == 0) return(character(0))
+  sort(unique(hits$group[!is.na(hits$group) & nzchar(hits$group)]))
+}
+
 # ---- Viewer builders (r3dmol) ----------------------------------------------
 # These reference r3dmol only inside the function bodies, so the module still
 # sources cleanly (for unit tests) without the package attached.

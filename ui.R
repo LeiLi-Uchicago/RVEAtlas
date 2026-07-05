@@ -1718,6 +1718,15 @@ ui <- navbarPage(
                                          min-height: 22px;
                                          margin-top: 6px;
                                        }
+                                       .sp-epitope-info {
+                                         margin-top: 10px;
+                                         padding: 8px;
+                                         background: #f0f8ff;
+                                         border-left: 3px solid #4363d8;
+                                         border-radius: 3px;
+                                         font-size: 0.85em;
+                                         color: #2c3e50;
+                                       }
                                      ")),
                                      selectizeInput("sp_position", label = NULL, choices = NULL, selected = NULL,
                                                     width = "100%",
@@ -1726,7 +1735,8 @@ ui <- navbarPage(
                                                       create = FALSE,
                                                       maxOptions = 1000
                                                     )),
-                                     div(class = "sp-numbering-hint", uiOutput("sp_numbering_label"))
+                                     div(class = "sp-numbering-hint", uiOutput("sp_numbering_label")),
+                                     div(class = "sp-epitope-info", uiOutput("sp_position_epitope_info"))
                                  )
                           )
                         )
