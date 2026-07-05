@@ -2366,7 +2366,7 @@ server <- function(input, output, session) {
   # ---- 3D structure: epitopes + selected site (single-site page) -----------
   sp_structure_ctx <- reactive({
     if (identical(input$variation_type, "NT")) return(NULL)
-    cfg <- sv_get_structure_config(input$global_subtype, input$sp_gene)
+    cfg <- sv_get_structure_config(input$global_subtype, input$sp_gene, pdb_id = input$sp_structure_variant)
     if (is.null(cfg)) return(NULL)
     rc <- sv_parse_region_chains(cfg$region_chains)
     num <- sv_load_numbering(input$global_subtype)
@@ -2374,6 +2374,15 @@ server <- function(input, output, session) {
     epi_res <- sv_epitope_residues(epi, rc)
     cur <- sv_map_positions(selected_position_base(), num, rc)
     list(cfg = cfg, rc = rc, epi = epi, epi_res = epi_res, cur = cur)
+  })
+
+  # Structure picker, shown only when the current subtype/gene has >1 structure.
+  output$sp_structure_variant_ui <- renderUI({
+    if (identical(input$variation_type, "NT")) return(NULL)
+    structs <- sv_list_structures(input$global_subtype, input$sp_gene)
+    if (nrow(structs) < 2) return(NULL)
+    selectInput("sp_structure_variant", "Structure:",
+                choices = stats::setNames(structs$pdb_id, structs$label))
   })
 
   output$sp_structure_status <- renderUI({
@@ -3000,7 +3009,7 @@ server <- function(input, output, session) {
   # r3dmol proxy in this build, so we rebuild the (small) widget each time.
   ent_structure_colors <- reactive({
     if (identical(input$variation_type, "NT")) return(NULL)
-    cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene)
+    cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene, pdb_id = input$ent_structure_variant)
     if (is.null(cfg)) return(NULL)
     ent <- entropy_site_summary()
     if (is.null(ent) || nrow(ent) == 0) return(NULL)
@@ -3015,7 +3024,7 @@ server <- function(input, output, session) {
     if (identical(input$variation_type, "NT")) {
       return(div(class = "struct-note", "3D structure view is available in Amino Acid mode only."))
     }
-    cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene)
+    cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene, pdb_id = input$ent_structure_variant)
     if (is.null(cfg)) {
       return(div(class = "struct-note",
                  sprintf("No 3D structure is configured for %s %s yet.",
@@ -3024,6 +3033,15 @@ server <- function(input, output, session) {
     div(class = "struct-note",
         sprintf("Residues colored by Shannon entropy on %s — blue = conserved, red = variable. Unmodeled residues (signal peptide, gaps) are gray.",
                 cfg$title))
+  })
+
+  # Structure picker, shown only when the current subtype/gene has >1 structure.
+  output$ent_structure_variant_ui <- renderUI({
+    if (identical(input$variation_type, "NT")) return(NULL)
+    structs <- sv_list_structures(input$global_subtype, input$ent_gene)
+    if (nrow(structs) < 2) return(NULL)
+    selectInput("ent_structure_variant", "Structure:",
+                choices = stats::setNames(structs$pdb_id, structs$label))
   })
 
   output$ent_structure <- renderR3dmol({

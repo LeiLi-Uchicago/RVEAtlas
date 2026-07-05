@@ -1535,7 +1535,8 @@ ui <- navbarPage(
                                       column(6, selectInput("ent_view_mode", "Structure style:",
                                                             choices = c("Surface" = "surface", "Cartoon" = "cartoon",
                                                                         "Stick" = "stick", "Sphere" = "sphere"),
-                                                            selected = "surface"))
+                                                            selected = "surface")),
+                                      column(6, uiOutput("ent_structure_variant_ui"))
                                     ),
                                     div(class = "struct-legend", uiOutput("ent_structure_legend")),
                                     withWaiter(r3dmolOutput("ent_structure", height = "500px"))
@@ -1769,7 +1770,8 @@ ui <- navbarPage(
                            column(6, selectInput("sp_view_mode", "Structure style:",
                                                  choices = c("Surface" = "surface", "Cartoon" = "cartoon",
                                                              "Stick" = "stick", "Sphere" = "sphere"),
-                                                 selected = "surface"))
+                                                 selected = "surface")),
+                           column(6, uiOutput("sp_structure_variant_ui"))
                          ),
                          div(class = "struct-legend", uiOutput("sp_structure_legend")),
                          withWaiter(r3dmolOutput("sp_structure", height = "500px"))

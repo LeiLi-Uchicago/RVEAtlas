@@ -62,14 +62,38 @@ sv_load_structure_config <- function(dir = sv_structure_dir()) {
   df
 }
 
-sv_get_structure_config <- function(subtype, gene, config = sv_load_structure_config()) {
+# A subtype/gene can have several structures (config rows); `pdb_id` picks one,
+# otherwise the first row is the default.
+sv_get_structure_config <- function(subtype, gene, config = sv_load_structure_config(),
+                                     pdb_id = NULL) {
   if (is.null(subtype) || is.null(gene) || nrow(config) == 0) return(NULL)
   hit <- config[
     config$subtype == as.character(subtype) & config$gene == as.character(gene),
     , drop = FALSE
   ]
   if (nrow(hit) == 0) return(NULL)
+  if (!is.null(pdb_id) && length(pdb_id) == 1 && !is.na(pdb_id) && nzchar(pdb_id)) {
+    pick <- hit[as.character(hit$pdb_id) == as.character(pdb_id), , drop = FALSE]
+    if (nrow(pick) > 0) hit <- pick
+  }
   as.list(hit[1, , drop = FALSE])
+}
+
+# All structures available for a subtype/gene, as data.frame(pdb_id, label) in
+# config order (first = default). `label` falls back to pdb_id when absent.
+sv_list_structures <- function(subtype, gene, config = sv_load_structure_config()) {
+  empty <- data.frame(pdb_id = character(0), label = character(0), stringsAsFactors = FALSE)
+  if (is.null(subtype) || is.null(gene) || nrow(config) == 0) return(empty)
+  hit <- config[
+    config$subtype == as.character(subtype) & config$gene == as.character(gene),
+    , drop = FALSE
+  ]
+  if (nrow(hit) == 0) return(empty)
+  pdb <- as.character(hit$pdb_id)
+  lab <- if (!is.null(hit$label)) as.character(hit$label) else rep(NA_character_, length(pdb))
+  blank <- is.na(lab) | !nzchar(lab)
+  lab[blank] <- pdb[blank]
+  data.frame(pdb_id = pdb, label = lab, stringsAsFactors = FALSE)
 }
 
 # "HA1:A;HA2:B"       -> list(HA1 = "A", HA2 = "B")

@@ -1,0 +1,15 @@
+# H5 hemagglutinin antigenic sites, derived as the structural equivalents of the
+# H1 sites Sa/Sb/Ca1/Ca2/Cb (Caton et al. 1982, Cell 31:417) by mapping each H1
+# HA1 position onto H5 through the app's shared cross-subtype alignment
+# (Full_HA_Position). H1 is used (not H3) because H5 and H1 are both Group 1 HAs
+# and structurally closest -- consistent with the app using H1 numbering for H5.
+# Positions are in H5 mature HA1 numbering = the app's H5 Numbering_Position = the
+# renumbered 2FK0/9NRR chain-A/C/E auth residue.
+# NOTE: these are structural equivalents, not H5-specific escape-mutant epitopes;
+# refine against H5 data (e.g. Kaverin et al. 2007) as needed. Edit freely.
+subtype	gene	region	site	positions	color	source
+H5NX	HA	HA1	Sa	130,131,158,159,160,161,162,163,164,165,167,168,169	#4363d8	H1-equivalent (Caton 1982) via alignment
+H5NX	HA	HA1	Sb	189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208	#3cb44b	H1-equivalent (Caton 1982) via alignment
+H5NX	HA	HA1	Ca1	171,172,173,174,175,176,209,210,211,240,241,242	#f58231	H1-equivalent (Caton 1982) via alignment
+H5NX	HA	HA1	Ca2	142,143,144,145,146,147,148,149,150,151,226,227,228	#911eb4	H1-equivalent (Caton 1982) via alignment
+H5NX	HA	HA1	Cb	75,76,77,78,79	#42d4f4	H1-equivalent (Caton 1982) via alignment
