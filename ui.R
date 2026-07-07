@@ -51,9 +51,38 @@ ui <- navbarPage(
   ),
   
   header = tags$head(
-    tags$link(rel = "shortcut icon", href = "app_icon_round.png"), 
-    use_waiter(), 
+    tags$link(rel = "shortcut icon", href = "app_icon_round.png"),
+    use_waiter(),
     shinyjs::useShinyjs(),
+    # Auto-recover the 3D structure viewers from WebGL context loss. A lost
+    # context (heavy surface rebuilds / GPU pressure) blanks the r3dmol canvas
+    # with no server error and previously needed a full page refresh. We catch
+    # the event (capture phase, since webglcontextlost does not bubble),
+    # preventDefault so it stays restorable, and tell Shiny to rebuild just that
+    # viewer's element. Debounced so a burst of losses triggers one rebuild.
+    tags$script(HTML("
+      (function(){
+        var STRUCT_IDS = ['sp_structure','ent_structure'];
+        var timers = {};
+        document.addEventListener('webglcontextlost', function(e){
+          var c = e.target;
+          if (!c || typeof c.closest !== 'function') return;
+          for (var i = 0; i < STRUCT_IDS.length; i++){
+            var id = STRUCT_IDS[i];
+            if (c.closest('#' + id)){
+              e.preventDefault();
+              if (timers[id]) clearTimeout(timers[id]);
+              timers[id] = setTimeout(function(sid){
+                return function(){
+                  if (window.Shiny) Shiny.setInputValue(sid + '_webgl_lost', Date.now(), {priority:'event'});
+                };
+              }(id), 400);
+              break;
+            }
+          }
+        }, true);
+      })();
+    ")),
     tags$style(HTML("
       :root {
         --rve-navy: #102033;
@@ -1540,7 +1569,7 @@ ui <- navbarPage(
                                     ),
                                     uiOutput("ent_epitope_groups_ui"),
                                     div(class = "struct-legend", uiOutput("ent_structure_legend")),
-                                    withWaiter(r3dmolOutput("ent_structure", height = "500px"))
+                                    uiOutput("ent_structure_holder")
                                 )
                             )
                         )
@@ -1795,7 +1824,7 @@ ui <- navbarPage(
                          ),
                          uiOutput("sp_epitope_groups_ui"),
                          div(class = "struct-legend", uiOutput("sp_structure_legend")),
-                         withWaiter(r3dmolOutput("sp_structure", height = "500px"))
+                         uiOutput("sp_structure_holder")
                      )
                  )
              )

@@ -1951,6 +1951,19 @@ server <- function(input, output, session) {
     suppressWarnings(as.numeric(sub("\\+.*$", "", selected_position_label())))
   })
 
+  # Debounced position for the 3D structure viewer. The viewer rebuilds a whole
+  # r3dmol/WebGL scene (incl. VDW surfaces) on each change; reacting to the live
+  # position would rebuild it on every keystroke/scroll and can exhaust the GPU
+  # (WebGL context loss -> blank viewer). Reuse the same 800ms debounce as the
+  # data outputs so the scene only rebuilds once the user settles on a position.
+  selected_position_base_debounced <- reactive({
+    choices <- sp_position_choices()
+    current <- as.character(sp_position_debounced())
+    label <- names(choices)[match(current, unname(choices))]
+    lbl <- if (length(label) > 0 && !is.na(label[[1]])) label[[1]] else current
+    suppressWarnings(as.numeric(sub("\\+.*$", "", lbl)))
+  })
+
   observeEvent(list(input$global_subtype, input$variation_type, input$sp_gene, input$sp_structure_variant), {
     choices <- sp_position_choices()
     if (length(choices) == 0) return(invisible(NULL))
@@ -2450,7 +2463,7 @@ server <- function(input, output, session) {
     # Filter epitopes by selected groups
     epi <- sv_filter_epitopes_by_group(epi, groups = input$sp_epitope_groups)
     epi_res <- sv_epitope_residues(epi, rc)
-    cur <- sv_map_positions(selected_position_base(), num, rc)
+    cur <- sv_map_positions(selected_position_base_debounced(), num, rc)
     list(cfg = cfg, rc = rc, epi = epi, epi_res = epi_res, cur = cur)
   })
 
@@ -2547,14 +2560,31 @@ server <- function(input, output, session) {
     }
   })
 
+  # The r3dmol output lives inside a holder so it can be fully recreated (fresh
+  # WebGL context) if the browser reports a lost context. `nonce` recreates the
+  # element; `redraw` is bumped a moment later (once the new element is bound) to
+  # push a fresh scene into it. Both change only on a recovery event, so normal
+  # use keeps the same viewer element.
+  sp_structure_nonce <- reactiveVal(0)
+  sp_structure_redraw <- reactiveVal(0)
+  observeEvent(input$sp_structure_webgl_lost, {
+    sp_structure_nonce(isolate(sp_structure_nonce()) + 1)
+    later::later(function() sp_structure_redraw(isolate(sp_structure_redraw()) + 1), 0.4)
+  })
+  output$sp_structure_holder <- renderUI({
+    sp_structure_nonce()
+    withWaiter(r3dmolOutput("sp_structure", height = "500px"))
+  })
+
   output$sp_structure <- renderR3dmol({
+    sp_structure_redraw()  # repaint into the fresh element after a WebGL recovery
     ctx <- sp_structure_ctx()
     req(!is.null(ctx))
     pdb <- sv_pdb_text(ctx$cfg)
     req(!is.null(pdb))
     cur_label <- NULL
     if (!is.null(ctx$cur) && nrow(ctx$cur) > 0) {
-      pos <- selected_position_base()
+      pos <- selected_position_base_debounced()
       num_lab <- ha_numbering_text(input$global_subtype, input$sp_gene, pos, TRUE)
       cur_label <- if (!is.null(num_lab) && nzchar(num_lab)) num_lab else paste("Pos", pos)
     }
@@ -3242,7 +3272,20 @@ server <- function(input, output, session) {
                           inline = TRUE))
   })
 
+  # Recreate the viewer element on WebGL context loss (see sp_structure_holder).
+  ent_structure_nonce <- reactiveVal(0)
+  ent_structure_redraw <- reactiveVal(0)
+  observeEvent(input$ent_structure_webgl_lost, {
+    ent_structure_nonce(isolate(ent_structure_nonce()) + 1)
+    later::later(function() ent_structure_redraw(isolate(ent_structure_redraw()) + 1), 0.4)
+  })
+  output$ent_structure_holder <- renderUI({
+    ent_structure_nonce()
+    withWaiter(r3dmolOutput("ent_structure", height = "500px"))
+  })
+
   output$ent_structure <- renderR3dmol({
+    ent_structure_redraw()  # repaint into the fresh element after a WebGL recovery
     ctx <- ent_structure_colors()
     req(!is.null(ctx))
     pdb <- sv_pdb_text(ctx$cfg)
