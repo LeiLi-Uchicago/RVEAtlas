@@ -20,7 +20,7 @@ Inputs (run from repo root):
 Output:
   - <output.pdb>   waters/buffer stripped; glycans and the catalytic Ca2+ kept;
       protomers renamed A,B,C,D and renumbered to app positions (iCode cleared);
-      structure-only residues that don't align get sentinel numbers >=1000 so they
+      structure-only residues that don't align get sentinel numbers >=100000 so they
       never collide with an epitope/selected site. SEQRES/HELIX/SHEET/SSBOND/LINK
       dropped (3Dmol recomputes secondary structure).
 
@@ -130,7 +130,10 @@ def main():
     lines = open(inp).read().splitlines()
 
     out = []
-    sentinel = 1000
+    # Sentinel base for structure-only (unalignable) residues. Kept above any real
+    # protein length so sv_structure_resolved_positions() can drop them without
+    # hiding genuine high-numbered residues (e.g. Spike goes to 1273).
+    sentinel = 100000
     matched_total = struct_total = 0
     for idx, ((model, chain), recs) in enumerate(protomers(lines)):
         if idx >= len(NEW_CHAINS):

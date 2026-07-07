@@ -2551,7 +2551,13 @@ server <- function(input, output, session) {
     } else {
       ""
     }
-    sites_word <- if (identical(input$sp_gene, "NA")) "Functional sites" else "Antigenic sites"
+    sites_word <- if (identical(input$sp_gene, "NA")) {
+      "Functional sites"
+    } else if (identical(input$sp_gene, "S")) {
+      "Domains & functional sites"
+    } else {
+      "Antigenic sites"
+    }
 
     if (!is.null(ctx$cur) && nrow(ctx$cur) > 0) {
       chains <- paste(unique(ctx$cur$chain), collapse = "/")

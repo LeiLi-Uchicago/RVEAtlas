@@ -164,7 +164,10 @@ sv_structure_resolved_positions <- function(structure_file, dir = sv_structure_d
   atom <- lines[substr(lines, 1, 6) == "ATOM  "]
   if (length(atom) == 0) return(numeric(0))
   resseq <- suppressWarnings(as.numeric(substr(atom, 23, 26)))
-  resseq <- resseq[!is.na(resseq) & resseq < 1000]
+  # Drop only the renumber tools' sentinel residues (>= 100000), which mark
+  # structure residues that don't map to an app position. Real proteins stay in
+  # range -- e.g. Spike goes to 1273, so a low cutoff would wrongly hide S2.
+  resseq <- resseq[!is.na(resseq) & resseq < 100000]
   sort(unique(resseq))
 }
 
