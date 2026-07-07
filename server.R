@@ -2518,15 +2518,24 @@ server <- function(input, output, session) {
         do.call(tagList, legend_items))
   })
 
+  # Whether a 3D structure exists for the current selection. Drives the
+  # conditionalPanel that shows/hides the structure controls + viewer, so genes
+  # without a structure show only the notice below (panel disabled).
+  output$sp_structure_available <- reactive({
+    !identical(input$variation_type, "NT") &&
+      nrow(sv_list_structures(input$global_subtype, input$sp_gene)) > 0
+  })
+  outputOptions(output, "sp_structure_available", suspendWhenHidden = FALSE)
+
   output$sp_structure_status <- renderUI({
     if (identical(input$variation_type, "NT")) {
       return(div(class = "struct-note", "3D structure view is available in Amino Acid mode only."))
     }
     ctx <- sp_structure_ctx()
     if (is.null(ctx)) {
-      return(div(class = "struct-note",
-                 sprintf("No 3D structure is configured for %s %s yet.",
-                         input$global_subtype, input$sp_gene)))
+      return(div(class = "struct-note struct-unavailable",
+                 sprintf("We do not have a protein structure for this protein (%s) yet, so the 3D viewer is unavailable for this selection.",
+                         input$sp_gene)))
     }
     pos <- selected_position_base()
     # Check which epitope groups the selected position belongs to, across every
@@ -3234,15 +3243,22 @@ server <- function(input, output, session) {
     c(list(cfg = cfg, rc = rc), res)
   })
 
+  # See sp_structure_available; drives the Conservation-tab structure panel.
+  output$ent_structure_available <- reactive({
+    !identical(input$variation_type, "NT") &&
+      nrow(sv_list_structures(input$global_subtype, input$ent_gene)) > 0
+  })
+  outputOptions(output, "ent_structure_available", suspendWhenHidden = FALSE)
+
   output$ent_structure_status <- renderUI({
     if (identical(input$variation_type, "NT")) {
       return(div(class = "struct-note", "3D structure view is available in Amino Acid mode only."))
     }
     cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene, pdb_id = input$ent_structure_variant)
     if (is.null(cfg)) {
-      return(div(class = "struct-note",
-                 sprintf("No 3D structure is configured for %s %s yet.",
-                         input$global_subtype, input$ent_gene)))
+      return(div(class = "struct-note struct-unavailable",
+                 sprintf("We do not have a protein structure for this protein (%s) yet, so the 3D viewer is unavailable for this selection.",
+                         input$ent_gene)))
     }
     div(class = "struct-note",
         sprintf("Residues colored by Shannon entropy on %s — blue = conserved, red = variable. Unmodeled residues (signal peptide, gaps) are gray.",

@@ -632,6 +632,16 @@ ui <- navbarPage(
         font-size: 0.92em;
         margin-bottom: 10px;
       }
+      .struct-unavailable {
+        margin: 4px 0 0 0;
+        padding: 14px 16px;
+        background: #f4f6f8;
+        border: 1px dashed #c2ccd6;
+        border-radius: 6px;
+        color: #6b7885;
+        font-style: italic;
+        text-align: center;
+      }
       .struct-legend {
         padding: 8px 4px;
         font-size: 0.95em;
@@ -1560,16 +1570,19 @@ ui <- navbarPage(
                                 rve_card(
                                     title = "3D Conservation Map",
                                     div(class = "struct-help", uiOutput("ent_structure_status")),
-                                    fluidRow(
-                                      column(6, selectInput("ent_view_mode", "Structure style:",
-                                                            choices = c("Surface" = "surface", "Cartoon" = "cartoon",
-                                                                        "Stick" = "stick", "Sphere" = "sphere"),
-                                                            selected = "surface")),
-                                      column(6, uiOutput("ent_structure_variant_ui"))
-                                    ),
-                                    uiOutput("ent_epitope_groups_ui"),
-                                    div(class = "struct-legend", uiOutput("ent_structure_legend")),
-                                    uiOutput("ent_structure_holder")
+                                    conditionalPanel(
+                                      condition = "output.ent_structure_available === true",
+                                      fluidRow(
+                                        column(6, selectInput("ent_view_mode", "Structure style:",
+                                                              choices = c("Surface" = "surface", "Cartoon" = "cartoon",
+                                                                          "Stick" = "stick", "Sphere" = "sphere"),
+                                                              selected = "surface")),
+                                        column(6, uiOutput("ent_structure_variant_ui"))
+                                      ),
+                                      uiOutput("ent_epitope_groups_ui"),
+                                      div(class = "struct-legend", uiOutput("ent_structure_legend")),
+                                      uiOutput("ent_structure_holder")
+                                    )
                                 )
                             )
                         )
@@ -1815,16 +1828,19 @@ ui <- navbarPage(
                      rve_card(
                          title = "3D Structure — Epitopes & Selected Site",
                          div(class = "struct-help", uiOutput("sp_structure_status")),
-                         fluidRow(
-                           column(6, selectInput("sp_view_mode", "Structure style:",
-                                                 choices = c("Surface" = "surface", "Cartoon" = "cartoon",
-                                                             "Stick" = "stick", "Sphere" = "sphere"),
-                                                 selected = "surface")),
-                           column(6, uiOutput("sp_structure_variant_ui"))
-                         ),
-                         uiOutput("sp_epitope_groups_ui"),
-                         div(class = "struct-legend", uiOutput("sp_structure_legend")),
-                         uiOutput("sp_structure_holder")
+                         conditionalPanel(
+                           condition = "output.sp_structure_available === true",
+                           fluidRow(
+                             column(6, selectInput("sp_view_mode", "Structure style:",
+                                                   choices = c("Surface" = "surface", "Cartoon" = "cartoon",
+                                                               "Stick" = "stick", "Sphere" = "sphere"),
+                                                   selected = "surface")),
+                             column(6, uiOutput("sp_structure_variant_ui"))
+                           ),
+                           uiOutput("sp_epitope_groups_ui"),
+                           div(class = "struct-legend", uiOutput("sp_structure_legend")),
+                           uiOutput("sp_structure_holder")
+                         )
                      )
                  )
              )
