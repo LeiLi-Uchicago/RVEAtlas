@@ -24,12 +24,14 @@ sv_read_tsv <- function(path) {
   keep <- !grepl("^\\s*#", lines)
   lines <- lines[keep]
   if (length(lines) == 0) return(data.frame())
-  # na.strings = "" (not the default "NA") so the literal gene/region value "NA"
-  # (neuraminidase) is kept as a string rather than read as a missing value.
+  # colClasses = "character" disables type guessing entirely: without it a column
+  # whose only value is "F" (fusion gene) or "T" is read as logical FALSE/TRUE, and
+  # "NA" (neuraminidase) as a missing value. na.strings = "" keeps empty cells (not
+  # the literal "NA") as NA. Callers coerce the few numeric fields themselves.
   utils::read.delim(
     text = paste(lines, collapse = "\n"),
     sep = "\t", header = TRUE, stringsAsFactors = FALSE, check.names = FALSE,
-    na.strings = ""
+    na.strings = "", colClasses = "character"
   )
 }
 
