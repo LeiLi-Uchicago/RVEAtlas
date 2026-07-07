@@ -2441,7 +2441,11 @@ server <- function(input, output, session) {
     cfg <- sv_get_structure_config(input$global_subtype, input$sp_gene, pdb_id = input$sp_structure_variant)
     if (is.null(cfg)) return(NULL)
     rc <- sv_parse_region_chains(cfg$region_chains)
-    num <- sv_load_numbering(input$global_subtype)
+    num <- if (isFALSE(cfg$resi_from_numbering)) {
+      sv_identity_numbering(names(rc), sv_structure_resolved_positions(cfg$structure_file))
+    } else {
+      sv_load_numbering(input$global_subtype)
+    }
     epi <- sv_load_epitopes(cfg, input$global_subtype, input$sp_gene)
     # Filter epitopes by selected groups
     epi <- sv_filter_epitopes_by_group(epi, groups = input$sp_epitope_groups)
@@ -2512,9 +2516,11 @@ server <- function(input, output, session) {
                          input$global_subtype, input$sp_gene)))
     }
     pos <- selected_position_base()
-    # Check which epitope groups the selected position belongs to
-    epitope_groups <- if (!is.na(pos)) {
-      sv_position_epitope_groups(pos, "HA1", ctx$epi)
+    # Check which epitope groups the selected position belongs to, across every
+    # region present in the epitope table (HA1/HA2 for HA, NA for neuraminidase).
+    epitope_groups <- if (!is.na(pos) && !is.null(ctx$epi) && nrow(ctx$epi) > 0) {
+      regions <- unique(ctx$epi$region)
+      sort(unique(unlist(lapply(regions, function(rg) sv_position_epitope_groups(pos, rg, ctx$epi)))))
     } else {
       character(0)
     }
@@ -2523,16 +2529,17 @@ server <- function(input, output, session) {
     } else {
       ""
     }
+    sites_word <- if (identical(input$sp_gene, "NA")) "Functional sites" else "Antigenic sites"
 
     if (!is.null(ctx$cur) && nrow(ctx$cur) > 0) {
       chains <- paste(unique(ctx$cur$chain), collapse = "/")
       div(class = "struct-note",
-          sprintf("Antigenic sites colored on %s. Selected position %s%s is highlighted in red on all protomers (residue %s, chains %s).",
-                  ctx$cfg$title, pos, epitope_note, ctx$cur$resi[[1]], chains))
+          sprintf("%s colored on %s. Selected position %s%s is highlighted in red on all protomers (residue %s, chains %s).",
+                  sites_word, ctx$cfg$title, pos, epitope_note, ctx$cur$resi[[1]], chains))
     } else {
       tagList(
         div(class = "struct-note",
-            sprintf("Antigenic sites colored on %s.", ctx$cfg$title)),
+            sprintf("%s colored on %s.", sites_word, ctx$cfg$title)),
         div(class = "struct-notice",
             sprintf("Selected position %s is not resolved in this structure (e.g. signal peptide, unmodeled/disordered region, or outside the crystallized construct), so it cannot be highlighted here.",
                     if (is.null(pos) || is.na(pos)) "—" else pos))
@@ -3187,7 +3194,11 @@ server <- function(input, output, session) {
     ent <- entropy_site_summary()
     if (is.null(ent) || nrow(ent) == 0) return(NULL)
     rc <- sv_parse_region_chains(cfg$region_chains)
-    num <- sv_load_numbering(input$global_subtype)
+    num <- if (isFALSE(cfg$resi_from_numbering)) {
+      sv_identity_numbering(names(rc), sv_structure_resolved_positions(cfg$structure_file))
+    } else {
+      sv_load_numbering(input$global_subtype)
+    }
     ent_df <- data.frame(Position = ent$Position_Base, Entropy = ent$Entropy)
     res <- sv_entropy_residue_colors(ent_df, num, rc, n_bins = 9)
     c(list(cfg = cfg, rc = rc), res)

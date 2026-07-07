@@ -394,6 +394,10 @@ normalize_usage_table <- function(df, subtype, var_type, gene_name, group_name) 
 build_usage_duckdb_cache <- function(subtypes = SUBTYPES, db_path = DUCKDB_CACHE) {
   if (!USE_DUCKDB) return(FALSE)
 
+  # Ensure the cache directory exists; on a fresh build from raw data it may not,
+  # and DuckDB cannot create the .tmp database in a missing directory.
+  dir.create(dirname(db_path), recursive = TRUE, showWarnings = FALSE)
+
   tmp_path <- paste0(db_path, ".tmp")
   if (file.exists(tmp_path)) unlink(tmp_path)
 
@@ -427,7 +431,7 @@ build_usage_duckdb_cache <- function(subtypes = SUBTYPES, db_path = DUCKDB_CACHE
           group_name <- sub(paste0("^", prefix, "_usage_by_(.*)\\.csv$"), "\\1", basename(f))
           usage_groups <- unique(c(usage_groups, group_name))
 
-          df <- read_csv(f, show_col_types = FALSE, na = character()) %>%
+          df <- read_csv(f, col_types = cols(.default = "c"), show_col_types = FALSE, na = character()) %>%
             normalize_usage_table(subtype, var_type, gene_name, group_name)
 
           DBI::dbWriteTable(con, "usage", df, append = TRUE)
@@ -660,10 +664,15 @@ if (!cache_loaded) {
             is_ym <- grepl(paste0(prefix, "_usage_by_Year_Month\\.csv$"), f)
             group_name <- sub(paste0("^", prefix, "_usage_by_(.*)\\.csv$"), "\\1", basename(f))
 
-            df <- read_csv(f, show_col_types = FALSE, na = character()) %>%
+            df <- read_csv(f, col_types = cols(.default = "c"), show_col_types = FALSE, na = character()) %>%
               strip_validation_count_cols() %>%
               dplyr::rename_with(~ gsub("^Protein$", "Gene", .x), any_of("Protein")) %>%
               mutate(Group = subtype)
+
+            # Columns are read as character (so "NA" gene / mixed values aren't
+            # mis-guessed); coerce the numeric columns the query path relies on.
+            if ("Count" %in% names(df)) df$Count <- suppressWarnings(as.numeric(df$Count))
+            if ("Position" %in% names(df)) df$Position <- suppressWarnings(as.numeric(df$Position))
 
             if (var_type == "NT") {
               df <- df %>%
@@ -736,6 +745,7 @@ if (!cache_loaded) {
   
   metadata_years <- sort(na.omit(unique(metadata_global$Year)), decreasing = TRUE)
 
+  dir.create(dirname(RDS_CACHE), recursive = TRUE, showWarnings = FALSE)
   saveRDS(
     list(
       cache_schema_version   = CACHE_SCHEMA_VERSION,

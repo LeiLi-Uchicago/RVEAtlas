@@ -1,0 +1,12 @@
+# N1 (H1N1) neuraminidase functional sites. The sialidase active site is a highly
+# conserved pocket formed by catalytic residues (that directly contact substrate)
+# and framework residues (that stabilise the pocket). Standard references cite
+# these in N2 numbering; here they are translated to the app's sequential N1
+# numbering (H1N1 NA, 1-based) by aligning the app N1 consensus to N2. The
+# renumbered 3NSS chains A-D share this numbering, so positions map 1:1.
+# Catalytic set (N2->N1): R118, D151, R152, R224->225, E276->277, R292->293,
+#   R371->368, Y406->402. Framework (N2->N1): R156, W178->179, S179->180,
+#   D198->199, I222->223, E227->228, H274->275, E277->278, N294->295, E425.
+subtype	gene	region	site	group	positions	color	source
+H1N1	NA	NA	Catalytic	Active site	118,151,152,225,277,293,368,402	#E74C3C	Colman 1983; N2->N1 by alignment
+H1N1	NA	NA	Framework	Active site	156,179,180,199,223,228,275,278,295,425	#F77F00	Colman 1983; N2->N1 by alignment

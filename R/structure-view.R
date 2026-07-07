@@ -24,9 +24,12 @@ sv_read_tsv <- function(path) {
   keep <- !grepl("^\\s*#", lines)
   lines <- lines[keep]
   if (length(lines) == 0) return(data.frame())
+  # na.strings = "" (not the default "NA") so the literal gene/region value "NA"
+  # (neuraminidase) is kept as a string rather than read as a missing value.
   utils::read.delim(
     text = paste(lines, collapse = "\n"),
-    sep = "\t", header = TRUE, stringsAsFactors = FALSE, check.names = FALSE
+    sep = "\t", header = TRUE, stringsAsFactors = FALSE, check.names = FALSE,
+    na.strings = ""
   )
 }
 
@@ -124,6 +127,43 @@ sv_empty_numbering <- function() {
     HA_Region = character(), Numbering_Position = numeric(),
     stringsAsFactors = FALSE
   )
+}
+
+# Identity numbering for structures whose PDB residues already equal the app
+# position (resi_from_numbering = FALSE), e.g. NA tetramers renumbered by
+# tools/renumber_na.py. Every app position maps to itself under a single region
+# (the config's region_chains region, e.g. "NA"). Used in place of the HA
+# numbering table so genes without an alignment table still highlight residues.
+sv_identity_numbering <- function(region, positions) {
+  region <- region[!is.na(region) & nzchar(region)]
+  positions <- suppressWarnings(as.numeric(positions))
+  positions <- sort(unique(positions[!is.na(positions)]))
+  if (length(region) == 0 || length(positions) == 0) return(sv_empty_numbering())
+  do.call(rbind, lapply(region, function(rg) {
+    data.frame(
+      Subtype = NA_character_,
+      Full_HA_Position = positions,
+      HA_Region = rg,
+      Numbering_Position = positions,
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+# Residue numbers actually present in a structure's protein chains. Used to build
+# identity numbering so that positions not modeled in the crystal (e.g. the NA
+# stalk/transmembrane region, or disordered loops) are correctly reported as
+# "not resolved" rather than silently mapped. Sentinel numbers >= 1000 written by
+# the renumber tools for unalignable structure residues are excluded.
+sv_structure_resolved_positions <- function(structure_file, dir = sv_structure_dir()) {
+  path <- file.path(dir, structure_file)
+  if (!file.exists(path)) return(numeric(0))
+  lines <- readLines(path, warn = FALSE)
+  atom <- lines[substr(lines, 1, 6) == "ATOM  "]
+  if (length(atom) == 0) return(numeric(0))
+  resseq <- suppressWarnings(as.numeric(substr(atom, 23, 26)))
+  resseq <- resseq[!is.na(resseq) & resseq < 1000]
+  sort(unique(resseq))
 }
 
 sv_load_numbering <- function(subtype = NULL, path = NULL) {

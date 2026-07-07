@@ -1,0 +1,11 @@
+# N2 (H3N2) neuraminidase functional sites. The sialidase active site is a highly
+# conserved pocket formed by catalytic residues (that directly contact substrate)
+# and framework residues (that stabilise the pocket). These are the standard N2
+# numbering positions (Colman, Varghese & Laver 1983), and the app's sequential
+# H3N2 NA numbering equals N2 numbering (verified: all 18 residues match), so no
+# translation is needed. The renumbered 4GZO chains A-D share this numbering.
+# Catalytic: R118, D151, R152, R224, E276, R292, R371, Y406.
+# Framework:  R156, W178, S179, D198, I222, E227, H274, E277, N294, E425.
+subtype	gene	region	site	group	positions	color	source
+H3N2	NA	NA	Catalytic	Active site	118,151,152,224,276,292,371,406	#E74C3C	Colman et al. 1983 (N2 numbering)
+H3N2	NA	NA	Framework	Active site	156,178,179,198,222,227,274,277,294,425	#F77F00	Colman et al. 1983 (N2 numbering)
