@@ -13,7 +13,7 @@ FLUExplorer is intended for researchers, bioinformaticians, genomic epidemiologi
 
 Data were sourced from GISAID, with all sequences annotated via Nextclade 3. The reference datasets used for each lineage are listed below:
 
-#### H1N1 pdm09
+#### H1N1
 
 | Segment | Nextclade reference dataset |
 |---|---|
@@ -25,19 +25,6 @@ Data were sourced from GISAID, with all sequences annotated via Nextclade 3. The
 | PA | `nextstrain/flu/h1n1pdm/pa` |
 | PB1 | `nextstrain/flu/h1n1pdm/pb1` |
 | PB2 | `nextstrain/flu/h1n1pdm/pb2` |
-
-#### H1N1 seasonal
-
-| Segment | Nextclade reference dataset |
-|---|---|
-| HA | `flu_h1n1_ha` |
-| NA | `flu_h1n1_na` |
-| MP | `flu_h1n1_mp` |
-| NP | `flu_h1n1_np` |
-| NS | `flu_h1n1_ns` |
-| PA | `flu_h1n1_pa` |
-| PB1 | `flu_h1n1_pb1` |
-| PB2 | `flu_h1n1_pb2` |
 
 #### H3N2
 
