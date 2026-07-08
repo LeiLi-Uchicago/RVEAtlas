@@ -1006,6 +1006,21 @@ flu_position_choices <- function(subtype, var_type, gene) {
   character(0)
 }
 
+# Groups that have data at a position but sit below the `min_seqs` cutoff, i.e.
+# the ones the Single Site filter hides. Returns data.frame(group, valid_total)
+# sorted by valid_total descending (fullest-but-still-hidden first). `df` must
+# still contain all groups (call before applying the min_seqs filter).
+usage_hidden_groups <- function(df, group_col, min_seqs) {
+  empty <- data.frame(group = character(), valid_total = numeric(), stringsAsFactors = FALSE)
+  if (is.null(df) || nrow(df) == 0 || !all(c(group_col, "Valid_Total") %in% names(df))) return(empty)
+  h <- df[!duplicated(df[[group_col]]), c(group_col, "Valid_Total"), drop = FALSE]
+  h <- h[!is.na(h$Valid_Total) & h$Valid_Total > 0 & h$Valid_Total < min_seqs, , drop = FALSE]
+  if (nrow(h) == 0) return(empty)
+  h <- h[order(-h$Valid_Total), , drop = FALSE]
+  data.frame(group = as.character(h[[group_col]]), valid_total = as.numeric(h$Valid_Total),
+             stringsAsFactors = FALSE)
+}
+
 usage_single_position <- function(subtype, var_type, gene, group_by, position, allowed_yms = NULL, min_seqs = 1, hide_empty_years = FALSE) {
   ym_filter <- ""
   if (!is.null(allowed_yms) && length(allowed_yms) > 0) {
@@ -1066,8 +1081,11 @@ usage_single_position <- function(subtype, var_type, gene, group_by, position, a
       Valid_Total = sum(Count, na.rm = TRUE),
       `Frequency(%)` = (Count / Valid_Total) * 100
     ) %>%
-    ungroup() %>%
-    filter(Valid_Total >= min_seqs)
+    ungroup()
+
+  hidden_groups <- usage_hidden_groups(res, group_by, min_seqs)
+
+  res <- res %>% filter(Valid_Total >= min_seqs)
 
   if (group_by == "Year" && isTRUE(hide_empty_years)) {
     res <- res %>% filter(Valid_Total > 0)
@@ -1076,6 +1094,8 @@ usage_single_position <- function(subtype, var_type, gene, group_by, position, a
   if (all(is.na(res$Codon_Usage))) {
     res$Codon_Usage <- NULL
   }
+
+  attr(res, "hidden_groups") <- hidden_groups
 
   res
 }
@@ -2057,10 +2077,13 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
     summarise(Count = sum(.data$Count, na.rm = TRUE), .groups = "drop") %>%
     group_by(.data$Clade) %>%
     mutate(Valid_Total = sum(.data$Count, na.rm = TRUE), `Frequency(%)` = (.data$Count / .data$Valid_Total) * 100) %>%
-    ungroup() %>%
+    ungroup()
+  hidden_groups <- usage_hidden_groups(out, "Clade", min_seqs)
+  out <- out %>%
     filter(.data$Valid_Total >= min_seqs) %>%
     rename(!!group_by := Clade)
   if (group_by == "Year" && isTRUE(hide_empty_years)) out <- out %>% filter(.data$Valid_Total > 0)
+  attr(out, "hidden_groups") <- hidden_groups
   out
 }
 

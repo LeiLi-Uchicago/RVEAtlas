@@ -1511,7 +1511,11 @@ server <- function(input, output, session) {
       }
     }
     years <- years[is.finite(years)]
-    if (length(years) == 0) return(c(1918, as.numeric(format(Sys.Date(), "%Y"))))
+    # Drop implausible years (e.g. corrupted metadata like 6684) so a single
+    # bad record can't blow out the slider range and squash the real data.
+    current_year <- as.numeric(format(Sys.Date(), "%Y"))
+    years <- years[years >= 1900 & years <= current_year + 1]
+    if (length(years) == 0) return(c(1918, current_year))
     c(floor(min(years, na.rm = TRUE)), ceiling(max(years, na.rm = TRUE)))
   })
 
@@ -1550,7 +1554,12 @@ server <- function(input, output, session) {
 
   dataset_breakdown_cols <- function(insights, time_col) {
     prefix <- paste0(time_col, "__")
-    sub(paste0("^", prefix), "", grep(paste0("^", prefix), names(insights$breakdowns), value = TRUE))
+    cols <- sub(paste0("^", prefix), "", grep(paste0("^", prefix), names(insights$breakdowns), value = TRUE))
+    # Pathogenicity (HPAI/LPAI) is only meaningful for H5NX; hide it for other subtypes.
+    if ("Pathogenicity" %in% cols && !identical(active_dataset_group(insights), "H5NX")) {
+      cols <- setdiff(cols, "Pathogenicity")
+    }
+    cols
   }
 
   active_dataset_group <- function(insights) {
@@ -1583,17 +1592,18 @@ server <- function(input, output, session) {
 
   resize_dataset_breakdown_plot <- function() {
     shinyjs::runjs("
-      setTimeout(function() {
-        var el = document.getElementById('stats_clade_plot');
-        if (el && window.Plotly) {
-          Plotly.Plots.resize(el);
-          window.dispatchEvent(new Event('resize'));
-        }
-      }, 100);
-      setTimeout(function() {
-        var el = document.getElementById('stats_clade_plot');
-        if (el && window.Plotly) Plotly.Plots.resize(el);
-      }, 450);
+      (function() {
+        var ids = ['stats_time_plot', 'stats_geo_plot', 'stats_clade_plot'];
+        var resizeAll = function() {
+          if (!window.Plotly) return;
+          ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el.querySelector('.plotly')) Plotly.Plots.resize(el);
+          });
+        };
+        setTimeout(function() { resizeAll(); window.dispatchEvent(new Event('resize')); }, 100);
+        setTimeout(resizeAll, 450);
+      })();
     ")
   }
 
@@ -1888,63 +1898,90 @@ server <- function(input, output, session) {
     out
   }
 
+  # For each app position, the "region:structural_position" key(s) used to look up
+  # epitope sites. HA maps app position -> HA_Region + Numbering_Position via the
+  # HA numbering table; other genes (RSV F, SARS-CoV-2 S) use identity numbering
+  # (app position already equals the structural/epitope position), so the key is
+  # simply "<region>:<app position>" for whichever region(s) the epitope table uses.
+  sp_epitope_struct_keys <- function(app_pos_num, subtype, gene, epi_regions) {
+    if (identical(gene, "HA") && !is.null(HA_NUMBERING_LOOKUP) &&
+        nrow(HA_NUMBERING_LOOKUP) > 0 && any(HA_NUMBERING_LOOKUP$Subtype == subtype)) {
+      nm <- HA_NUMBERING_LOOKUP[HA_NUMBERING_LOOKUP$Subtype == subtype, , drop = FALSE]
+      j <- match(as.character(app_pos_num), as.character(nm$Full_HA_Position))
+      out <- rep(list(character(0)), length(app_pos_num))
+      ok <- !is.na(j) & !is.na(nm$Numbering_Position[j])
+      out[ok] <- as.list(paste0(nm$HA_Region[j[ok]], ":", nm$Numbering_Position[j[ok]]))
+      out
+    } else {
+      lapply(app_pos_num, function(p) if (is.na(p)) character(0) else paste0(epi_regions, ":", p))
+    }
+  }
+
   # Build a DISPLAY-ONLY copy of the position choices where each dropdown label is
-  # annotated with colored badges naming the epitope site(s) that contain the
-  # position (e.g. "165  [Sa]  [Ca2]"). Only the shown label (names) is changed;
-  # the option VALUE (the plain position key) is preserved so all downstream logic
-  # -- selected_position_label(), selected_position_base(), lookups -- stays clean.
-  # The badge HTML is rendered by the selectize `render` option set in the UI.
-  # Applied only for HA amino-acid choices where epitope data + numbering exist.
+  # annotated with (a) a colored entropy chip showing the site's Shannon entropy
+  # and (b) colored badges naming the epitope site(s) that contain the position
+  # (e.g. "165  [0.42]  [Sa] [Ca2]"). Only the shown label (names) is changed; the
+  # option VALUE (the plain position key) is preserved so all downstream logic --
+  # selected_position_label(), selected_position_base(), lookups -- stays clean.
+  # Works for every gene that has a structure (HA, RSV F, SARS-CoV-2 S).
   sp_annotate_choices_with_epitopes <- function(choices, subtype, gene, var_type, pdb_id) {
-    if (length(choices) == 0) return(choices)
-    if (!identical(var_type, "AA") || !identical(gene, "HA")) return(choices)
-    cfg <- sv_get_structure_config(subtype, gene, pdb_id = pdb_id)
-    if (is.null(cfg)) return(choices)
-    epi <- tryCatch(sv_load_epitopes(cfg, subtype, gene), error = function(e) data.frame())
-    if (is.null(epi) || nrow(epi) == 0) return(choices)
-    if (is.null(HA_NUMBERING_LOOKUP) || nrow(HA_NUMBERING_LOOKUP) == 0) return(choices)
-
-    # "region:structural_position" -> unique (site, color) pairs at that residue
-    epi_pos <- suppressWarnings(as.numeric(epi$position))
-    epi_key <- paste0(epi$region, ":", epi_pos)
-    site_lookup <- tapply(seq_len(nrow(epi)), epi_key, function(idx) {
-      d <- epi[idx, , drop = FALSE]
-      keep <- !duplicated(d$site)
-      list(sites = d$site[keep], colors = d$color[keep])
-    }, simplify = FALSE)
-
-    # subtype-scoped app-position -> structural position + region
-    numbering <- HA_NUMBERING_LOOKUP[HA_NUMBERING_LOOKUP$Subtype == subtype, , drop = FALSE]
-    by_app_pos    <- as.character(numbering$Full_HA_Position)
-    struct_pos_vec <- numbering$Numbering_Position
-    struct_reg_vec <- numbering$HA_Region
-
+    if (length(choices) == 0 || !identical(var_type, "AA")) return(choices)
     values <- unname(choices)
     labels <- names(choices)
     if (is.null(labels)) labels <- values
+    # Match on the biological position shown in the label (strip any "+insertion"
+    # suffix), not the option VALUE: for COVID/RSV the value is a composite key
+    # like "S:343", while entropy and epitopes are keyed by the base position.
+    app_pos_num <- suppressWarnings(as.numeric(sub("\\+.*$", "", labels)))
 
-    new_labels <- vapply(seq_along(values), function(i) {
-      base_label <- labels[[i]]
-      app_pos <- suppressWarnings(as.numeric(values[[i]]))
-      if (is.na(app_pos)) return(base_label)
-      j <- match(as.character(app_pos), by_app_pos)
-      if (is.na(j)) return(base_label)
-      struct_pos <- struct_pos_vec[[j]]
-      if (is.null(struct_pos) || is.na(struct_pos)) return(base_label)
-      info <- site_lookup[[paste0(struct_reg_vec[[j]], ":", struct_pos)]]
-      if (is.null(info) || length(info$sites) == 0) return(base_label)
-      badges <- vapply(seq_along(info$sites), function(k) {
-        sprintf(
-          paste0('<span style="display:inline-block;background:%s;color:#fff;',
-                 'border-radius:3px;padding:0 5px;margin-left:4px;font-size:0.8em;',
-                 'line-height:1.5;vertical-align:middle;">%s</span>'),
-          info$colors[[k]], sp_pretty_site(info$sites[[k]])
-        )
-      }, character(1))
-      paste0(base_label, paste(badges, collapse = ""))
-    }, character(1))
+    # ---- entropy chip: a colored card holding the score, low(blue)->high(red) ----
+    ent_badge <- rep("", length(values))
+    ent <- tryCatch(conservation_cached_entropy(subtype, var_type, gene), error = function(e) NULL)
+    if (!is.null(ent) && nrow(ent) > 0) {
+      emax <- suppressWarnings(max(ent$Entropy, na.rm = TRUE))
+      if (!is.finite(emax) || emax <= 0) emax <- 1
+      evals <- ent$Entropy[match(app_pos_num, ent$Position)]
+      ecols <- sv_entropy_colors(evals, domain = c(0, emax))$color
+      # Readable text on any chip color (dark on light chips, white on dark ones).
+      rgb <- grDevices::col2rgb(ifelse(is.na(ecols), "#ffffff", ecols))
+      lum <- (0.299 * rgb[1, ] + 0.587 * rgb[2, ] + 0.114 * rgb[3, ]) / 255
+      tcols <- ifelse(lum > 0.6, "#1a1a1a", "#ffffff")
+      ent_badge <- ifelse(
+        is.na(evals), "",
+        sprintf(paste0('<span title="Shannon entropy (conservation)" style="display:inline-block;',
+                       'background:%s;color:%s;border-radius:3px;padding:0 5px;margin-left:6px;',
+                       'font-size:0.78em;font-weight:600;line-height:1.5;vertical-align:middle;">%.2f</span>'),
+                ecols, tcols, evals)
+      )
+    }
 
-    stats::setNames(values, new_labels)
+    # ---- epitope site badges ----------------------------------------------------
+    epi_badge <- rep("", length(values))
+    cfg <- sv_get_structure_config(subtype, gene, pdb_id = pdb_id)
+    if (!is.null(cfg)) {
+      epi <- tryCatch(sv_load_epitopes(cfg, subtype, gene), error = function(e) data.frame())
+      if (!is.null(epi) && nrow(epi) > 0) {
+        epi_key <- paste0(epi$region, ":", suppressWarnings(as.numeric(epi$position)))
+        site_lookup <- tapply(seq_len(nrow(epi)), epi_key, function(idx) {
+          d <- epi[idx, , drop = FALSE]
+          keep <- !duplicated(d$site)
+          list(sites = d$site[keep], colors = d$color[keep])
+        }, simplify = FALSE)
+        keys <- sp_epitope_struct_keys(app_pos_num, subtype, gene, unique(epi$region))
+        epi_badge <- vapply(seq_along(values), function(i) {
+          info <- NULL
+          for (k in keys[[i]]) { info <- site_lookup[[k]]; if (!is.null(info)) break }
+          if (is.null(info) || length(info$sites) == 0) return("")
+          paste(vapply(seq_along(info$sites), function(m) sprintf(
+            paste0('<span style="display:inline-block;background:%s;color:#fff;',
+                   'border-radius:3px;padding:0 5px;margin-left:4px;font-size:0.8em;',
+                   'line-height:1.5;vertical-align:middle;">%s</span>'),
+            info$colors[[m]], sp_pretty_site(info$sites[[m]])), character(1)), collapse = "")
+        }, character(1))
+      }
+    }
+
+    stats::setNames(values, paste0(labels, ent_badge, epi_badge))
   }
 
   selected_position_label <- reactive({
@@ -2304,6 +2341,33 @@ server <- function(input, output, session) {
     )
   })
 
+  # Notice listing groups hidden by the "Min Seqs" cutoff (they have data at this
+  # position but fewer than the threshold), with how to reveal them.
+  output$sp_hidden_groups_info <- renderUI({
+    data <- sp_filtered_data()
+    if (!is.data.frame(data)) return(NULL)
+    hidden <- attr(data, "hidden_groups")
+    if (is.null(hidden) || !is.data.frame(hidden) || nrow(hidden) == 0) return(NULL)
+    req(input$sp_min_seqs, input$sp_group_by)
+
+    group_label <- gsub("_", "-", input$sp_group_by)
+    n <- nrow(hidden)
+    top <- utils::head(hidden, 10)
+    listed <- paste0(top$group, " (", top$valid_total, ")")
+    more <- if (n > 10) sprintf(", and %d more", n - 10) else ""
+
+    div(
+      class = "alert alert-warning",
+      style = "padding: 8px 12px; margin-bottom: 10px;",
+      strong(sprintf("%d %s group%s hidden (fewer than %d sequences at this position): ",
+                     n, group_label, if (n == 1) "" else "s", input$sp_min_seqs)),
+      span(paste0(listed, collapse = ", ")),
+      more, ". ",
+      span(style = "color: #5f6c7b;",
+           "Lower the ", strong("Min Seqs"), " slider to show them.")
+    )
+  })
+
   output$sp_group_limit_info <- renderUI({
     if (!isTRUE(sp_group_limit_active())) return(NULL)
     req(input$global_subtype, input$variation_type, input$sp_gene, input$sp_group_by, sp_position_debounced())
@@ -2467,12 +2531,15 @@ server <- function(input, output, session) {
       sv_load_numbering(input$global_subtype)
     }
     epi <- sv_load_epitopes(cfg, input$global_subtype, input$sp_gene)
-    # Filter epitopes by selected groups
-    epi <- sv_filter_epitopes_by_group(epi, groups = input$sp_epitope_groups)
+    # Filter epitopes by selected groups. Debounced so that ticking several groups
+    # in the picker rebuilds the WebGL scene once, not once per toggle (repeated
+    # rapid rebuilds can exhaust the GPU and blank the viewer).
+    epi <- sv_filter_epitopes_by_group(epi, groups = sp_epitope_groups_debounced())
     epi_res <- sv_epitope_residues(epi, rc)
     cur <- sv_map_positions(selected_position_base_debounced(), num, rc)
     list(cfg = cfg, rc = rc, epi = epi, epi_res = epi_res, cur = cur)
   })
+  sp_epitope_groups_debounced <- debounce(reactive(input$sp_epitope_groups), 500)
 
   # Structure picker, shown only when the current subtype/gene has >1 structure.
   output$sp_structure_variant_ui <- renderUI({
@@ -2483,7 +2550,8 @@ server <- function(input, output, session) {
                 choices = stats::setNames(structs$pdb_id, structs$label))
   })
 
-  # Epitope group checkboxes, shown only when epitopes have groups.
+  # Epitope group picker: a single-select dropdown so exactly one group is shown
+  # at a time (keeps the surface uncluttered and the WebGL scene light).
   output$sp_epitope_groups_ui <- renderUI({
     if (identical(input$variation_type, "NT")) return(NULL)
     cfg <- sv_get_structure_config(input$global_subtype, input$sp_gene, pdb_id = input$sp_structure_variant)
@@ -2491,10 +2559,14 @@ server <- function(input, output, session) {
     epi <- sv_load_epitopes(cfg, input$global_subtype, input$sp_gene)
     groups <- sv_epitope_groups(epi)
     if (length(groups) == 0) return(NULL)
-    div(style = "margin-top: 10px; padding: 8px; background: #f5f5f5; border-radius: 4px;",
-        div(style = "font-size: 0.9em; font-weight: bold; margin-bottom: 6px;", "Epitope groups:"),
-        checkboxGroupInput("sp_epitope_groups", NULL, choices = groups, selected = groups,
-                          inline = TRUE))
+    default_group <- if ("Antigenic sites" %in% groups) "Antigenic sites" else groups[[1]]
+    # isolate() so picking a group doesn't rebuild this dropdown; the current
+    # choice is still preserved across protein changes when it stays valid.
+    current <- isolate(input$sp_epitope_groups)
+    selected <- if (!is.null(current) && current %in% groups) current else default_group
+    div(style = "margin-top: 10px;",
+        selectInput("sp_epitope_groups", "Epitope group:",
+                    choices = groups, selected = selected, width = "100%"))
   })
 
   # Color legend showing active epitope groups and their sites
@@ -2625,7 +2697,7 @@ server <- function(input, output, session) {
           span(leg$site[[i]]))
     })
     tagList(
-      div(style = "font-weight:600;margin-bottom:6px;", "Antigenic sites"),
+      div(style = "font-weight:600;margin-bottom:6px;", "Highlighted sites"),
       div(style = "display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;",
           items,
           div(style = "display:flex;align-items:center;gap:6px;",
