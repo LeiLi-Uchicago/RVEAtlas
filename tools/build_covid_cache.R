@@ -171,8 +171,28 @@ build_metadata_summary <- function() {
           format(global_summary$total_sequences, big.mark = ","), " sequences)")
 }
 
+# Conservation entropy + dataset-insights caches. Rather than re-derive the
+# entropy/insights logic here, load the app (global.R) and drive its own
+# canonical builders with force = TRUE, so the caches -- and their freshness
+# signatures -- exactly match what the running app expects. Must run AFTER the
+# duckdb + metadata_summary phases so the builders see fresh source data.
+build_aux_caches <- function() {
+  message("Loading app functions (global.R) to build conservation + dataset-insights...")
+  suppressMessages(source("global.R", chdir = FALSE))
+  message("Rebuilding conservation entropy cache for COVID...")
+  ensure_conservation_entropy_cache("COVID", force = TRUE)
+  cons <- readRDS(conservation_cache_path("COVID"))
+  message("  conservation rows: ", format(nrow(cons$data), big.mark = ","))
+  message("Rebuilding dataset-insights cache for COVID...")
+  di_path <- dataset_insights_cache_path("COVID")
+  if (file.exists(di_path)) file.remove(di_path)
+  di <- load_dataset_insights("COVID")
+  message("  dataset-insights total sequences: ", di$total_sequences)
+}
+
 args <- commandArgs(TRUE)
 phase <- if (length(args) > 0) args[[1]] else "all"
 if (phase %in% c("all", "duckdb"))   build_usage_duckdb()
 if (phase %in% c("all", "metadata")) build_metadata_summary()
+if (phase %in% c("all", "aux"))      build_aux_caches()
 message("Done.")
