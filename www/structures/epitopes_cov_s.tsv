@@ -15,3 +15,4 @@ COVID:SARS-CoV-2	S	S	RBD	Domains	319,320,321,322,323,324,325,326,327,328,329,330
 COVID:SARS-CoV-2	S	S	ACE2_contact	Functional sites	417,446,449,453,455,456,475,486,487,489,493,496,498,500,501,502,505	#E74C3C	ACE2 receptor-binding motif (Lan et al. 2020)
 COVID:SARS-CoV-2	S	S	Furin_cleavage	Functional sites	682,683,684,685,686	#911EB4	S1/S2 furin cleavage site (RRAR)
 COVID:SARS-CoV-2	S	S	Fusion_peptide	Functional sites	816,817,818,819,820,821,822,823,824,825,826,827,828,829,830,831,832,833	#3CB44B	Fusion peptide (S2)
+COVID:SARS-CoV-2	S	S	N-Gly	N-linked glycosylation	17,61,74,122,149,165,188,234,245,282,331,343,354,603,616,657,709,717,801,1074,1098,1134,1158,1173,1194	#009E73	Potential N-X-S/T sequon across sequence history

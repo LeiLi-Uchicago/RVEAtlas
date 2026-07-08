@@ -19,3 +19,5 @@ H5NX	HA	HA1	central_stalk	Antibody binding	13,35,36,37,38,39,297,298,299,324,325
 H5NX	HA	HA1	trimer_interface	Antibody binding	89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238	#F77F00	Antibody binding - trimer interface
 H5NX	HA	HA2	anchor	Antibody binding	26,27,28,29,30,31,32,33,34,35,133,135,136,137,139,140,141,142,143,144,145	#D62828	Antibody binding - anchor
 H5NX	HA	HA2	central_stalk	Antibody binding	19,20,21,22,37,39,42,43,46,47,49,50,53,54,57	#FF6B9D	Antibody binding - central stalk
+H5NX	HA	HA1	N-Gly	N-linked glycosylation	16,17,29,100,133,145,147,161,170,172,173,190,200,243,268,293	#009E73	Potential N-X-S/T sequon across sequence history
+H5NX	HA	HA2	N-Gly	N-linked glycosylation	154	#009E73	Potential N-X-S/T sequon across sequence history

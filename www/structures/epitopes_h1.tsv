@@ -14,3 +14,5 @@ H1N1	HA	HA1	central_stalk	Antibody binding	12,34,35,36,37,38,295,296,297,322,323
 H1N1	HA	HA1	trimer_interface	Antibody binding	88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236	#F77F00	Antibody binding - trimer interface
 H1N1	HA	HA2	anchor	Antibody binding	25,26,27,28,29,30,31,32,33,34,131,133,134,135,137,138,139,140,141,142,143	#D62828	Antibody binding - anchor
 H1N1	HA	HA2	central_stalk	Antibody binding	18,19,20,21,36,38,41,42,45,46,48,49,52,53,56	#FF6B9D	Antibody binding - central stalk
+H1N1	HA	HA1	N-Gly	N-linked glycosylation	16,17,29,60,62,79,93,131,133,134,145,161,166,168,190,211,275,282,293	#009E73	Potential N-X-S/T sequon across sequence history
+H1N1	HA	HA2	N-Gly	N-linked glycosylation	145,154	#009E73	Potential N-X-S/T sequon across sequence history

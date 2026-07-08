@@ -1,26 +1,28 @@
-# RSV fusion (F) glycoprotein antigenic sites Ø-V, in the standard RSV F0
+# RSV fusion (F) glycoprotein antigenic sites <U+00D8>-V, in the standard RSV F0
 # precursor numbering (McLellan/Graham; Gilman et al. 2016 PLoS Pathog; Mousa
 # et al. 2018). The app's RSV F position equals this standard numbering
 # (verified: furin site KKRKRR at 131-136, fusion peptide at 137, site II
 # N262/N268/K272), and the renumbered 5EA3 (A) / 5UDE (B) chains A-C share it,
 # so positions map 1:1 for both subgroups.
-#   Site Ø  - prefusion apex; D25 / AM22 / nirsevimab (MEDI8897)
+#   Site <U+00D8>  - prefusion apex; D25 / AM22 / nirsevimab (MEDI8897)
 #   Site I  - postfusion-exposed; mAb 131-2a
 #   Site II - palivizumab / motavizumab (helix-loop-helix)
 #   Site III- MPE8 (prefusion)
 #   Site IV - 101F
-#   Site V  - prefusion, between Ø and III (hRSV90, 25-9)
+#   Site V  - prefusion, between <U+00D8> and III (hRSV90, 25-9)
 # These are structural epitope patches; refine residue membership as needed.
 subtype	gene	region	site	group	positions	color	source
-RSV:A	F	F	Site_0	Antigenic sites	62,63,64,65,66,67,68,69,196,197,198,199,200,201,202,203,204,205,206,207,208,209	#E6194B	Site Ø - nirsevimab/D25
+RSV:A	F	F	Site_0	Antigenic sites	62,63,64,65,66,67,68,69,196,197,198,199,200,201,202,203,204,205,206,207,208,209	#E6194B	Site <U+00D8> - nirsevimab/D25
 RSV:A	F	F	Site_I	Antigenic sites	27,28,29,30,31,32,379,380,381,382,383,384,385,386,387,388,389	#4363D8	Site I - 131-2a
 RSV:A	F	F	Site_II	Antigenic sites	254,255,256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277	#3CB44B	Site II - palivizumab
 RSV:A	F	F	Site_III	Antigenic sites	46,47,48,49,50,51,52,53,54,301,302,303,304,305,306,307,308,309,310,311	#F58231	Site III - MPE8
 RSV:A	F	F	Site_IV	Antigenic sites	422,423,424,425,426,427,428,429,430,431,432,433,434,435,436,437,438,439,440,441,442,443,444,445,446,447	#911EB4	Site IV - 101F
 RSV:A	F	F	Site_V	Antigenic sites	40,41,42,43,44,45,55,56,57,58,59,60,146,147,148,149,150,151,152,153,154,163,164,165,166,167,168,169,170,171,172,173,174,188,189,190,191,192,193,194	#42D4F4	Site V - hRSV90
-RSV:B	F	F	Site_0	Antigenic sites	62,63,64,65,66,67,68,69,196,197,198,199,200,201,202,203,204,205,206,207,208,209	#E6194B	Site Ø - nirsevimab/D25
+RSV:B	F	F	Site_0	Antigenic sites	62,63,64,65,66,67,68,69,196,197,198,199,200,201,202,203,204,205,206,207,208,209	#E6194B	Site <U+00D8> - nirsevimab/D25
 RSV:B	F	F	Site_I	Antigenic sites	27,28,29,30,31,32,379,380,381,382,383,384,385,386,387,388,389	#4363D8	Site I - 131-2a
 RSV:B	F	F	Site_II	Antigenic sites	254,255,256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277	#3CB44B	Site II - palivizumab
 RSV:B	F	F	Site_III	Antigenic sites	46,47,48,49,50,51,52,53,54,301,302,303,304,305,306,307,308,309,310,311	#F58231	Site III - MPE8
 RSV:B	F	F	Site_IV	Antigenic sites	422,423,424,425,426,427,428,429,430,431,432,433,434,435,436,437,438,439,440,441,442,443,444,445,446,447	#911EB4	Site IV - 101F
 RSV:B	F	F	Site_V	Antigenic sites	40,41,42,43,44,45,55,56,57,58,59,60,146,147,148,149,150,151,152,153,154,163,164,165,166,167,168,169,170,171,172,173,174,188,189,190,191,192,193,194	#42D4F4	Site V - hRSV90
+RSV:A	F	F	N-Gly	N-linked glycosylation	27,70,116,120,126,500	#009E73	Potential N-X-S/T sequon across sequence history
+RSV:B	F	F	N-Gly	N-linked glycosylation	27,70,116,120,126,500	#009E73	Potential N-X-S/T sequon across sequence history

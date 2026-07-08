@@ -1297,15 +1297,19 @@ ui <- navbarPage(
     ")),
     tags$script(HTML("
       window.resizeDatasetBreakdownPlot = function() {
-        var el = document.getElementById('stats_clade_plot');
-        if (!el || !window.Plotly) return;
+        if (!window.Plotly) return;
+        var ids = ['stats_time_plot', 'stats_geo_plot', 'stats_clade_plot'];
+        var resizeAll = function() {
+          ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el.querySelector('.plotly')) Plotly.Plots.resize(el);
+          });
+        };
         setTimeout(function() {
-          Plotly.Plots.resize(el);
+          resizeAll();
           window.dispatchEvent(new Event('resize'));
         }, 80);
-        setTimeout(function() {
-          Plotly.Plots.resize(el);
-        }, 350);
+        setTimeout(resizeAll, 350);
       };
       Shiny.addCustomMessageHandler('resize_dataset_breakdown_plot', function(message) {
         window.resizeDatasetBreakdownPlot();
@@ -1503,16 +1507,18 @@ ui <- navbarPage(
 
              
              fluidRow(
-               column(6, 
+               column(6,
                       rve_card(
                           title = "Sequencing Over Time (Seasonality)",
-                          withWaiter(plotlyOutput("stats_time_plot", height = "400px"))
+                          class = "analysis-panel dataset-breakdown-plot-wrap",
+                          withWaiter(plotlyOutput("stats_time_plot", height = "400px", width = "100%"))
                       )
                ),
-               column(6, 
+               column(6,
                       rve_card(
                           title = "Regional Breakdown",
-                          withWaiter(plotlyOutput("stats_geo_plot", height = "400px"))
+                          class = "analysis-panel dataset-breakdown-plot-wrap",
+                          withWaiter(plotlyOutput("stats_geo_plot", height = "400px", width = "100%"))
                       )
                )
              ),
@@ -1763,7 +1769,7 @@ ui <- navbarPage(
                             selectInput("sp_quick_visit", "Jump to Key Position:", 
                                         choices = if(nrow(important_pos_df) > 0) c("Manual Selection" = "None", setNames(1:nrow(important_pos_df), important_pos_df$label)) else c("Manual Selection" = "None"))
                         ),
-                        sliderInput("sp_min_seqs", "Min Seqs:", min = 1, max = 500, value = 5)
+                        sliderInput("sp_min_seqs", "Min Seqs:", min = 1, max = 500, value = 3)
                  ),
                  column(3,
                         h5("Precise Access", style="font-weight: bold; color: #2980b9;"),
@@ -1823,6 +1829,17 @@ ui <- navbarPage(
                                                         }
                                                       }")
                                                     )),
+                                     div(style = "font-size: 0.78em; color: #666; margin-top: 6px; line-height: 1.6;",
+                                         HTML(paste0(
+                                           'The colored chip after each position is its ',
+                                           '<b>Shannon entropy</b> (site conservation): ',
+                                           '<span style="background:#2c7bb6;color:#fff;padding:0 5px;border-radius:3px;">conserved</span>',
+                                           ' &rarr; ',
+                                           '<span style="background:#ffffbf;color:#1a1a1a;padding:0 5px;border-radius:3px;">mid</span>',
+                                           ' &rarr; ',
+                                           '<span style="background:#d7191c;color:#fff;padding:0 5px;border-radius:3px;">variable</span>',
+                                           '. Colored tags name the epitope / annotation groups at that site.'
+                                         ))),
                                      div(class = "sp-numbering-hint", uiOutput("sp_numbering_label")),
                                      div(class = "sp-epitope-info", uiOutput("sp_position_epitope_info"))
                                  )
@@ -1844,6 +1861,7 @@ ui <- navbarPage(
                           class = "analysis-panel rve-table-card",
                           uiOutput("sp_position_details"),
                           uiOutput("sp_position_count_info"),
+                          uiOutput("sp_hidden_groups_info"),
                           uiOutput("sp_group_limit_info"),
                           div(style = "margin-bottom: 28px;",
                               plotlyOutput("sp_overall_aa_bar", height = "120px")
