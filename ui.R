@@ -381,6 +381,43 @@ ui <- navbarPage(
         border-radius: var(--rve-radius);
         box-shadow: var(--rve-shadow);
       }
+      /* Platform Update Log sits on top in a subtly tinted panel */
+      .methods-platform-section {
+        background: #f3f8fb;
+        border: 1px solid #dbe7f0;
+        border-left: 4px solid var(--rve-blue);
+        border-radius: 8px;
+        padding: 4px 20px 12px;
+        margin-bottom: 8px;
+      }
+      .methods-platform-section > :first-child { margin-top: 14px; }
+      /* Labeled divider between the platform log and pathogen-specific info */
+      .methods-section-divider {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: 34px 2px 22px;
+      }
+      .methods-section-divider::before,
+      .methods-section-divider::after {
+        content: '';
+        flex: 1;
+        height: 2px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, transparent, #b9cddb 45%, #b9cddb 55%, transparent);
+      }
+      .methods-section-divider-label {
+        flex: none;
+        font-weight: 700;
+        font-size: 1.05em;
+        letter-spacing: 0.02em;
+        color: #fff;
+        background: var(--rve-teal);
+        padding: 6px 16px;
+        border-radius: 999px;
+        box-shadow: 0 1px 3px rgba(16,32,51,0.15);
+        white-space: nowrap;
+      }
       label {
         color: var(--rve-ink);
         font-weight: 700;

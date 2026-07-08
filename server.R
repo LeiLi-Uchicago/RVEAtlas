@@ -191,10 +191,17 @@ server <- function(input, output, session) {
   output$app_info_markdown <- renderUI({
     pathogen_path <- paste0("APP_INFO_", pathogen_asset_id(), ".md")
     platform_path <- "APP_INFO_PLATFORM.md"
+    pathogen_label <- PATHOGEN_ADAPTERS[[active_pathogen()]]$label %||% active_pathogen()
     tagList(
-      includeMarkdown(pathogen_path),
-      tags$hr(),
-      includeMarkdown(platform_path)
+      # Platform-wide update log first, then a labeled divider, then the
+      # pathogen-specific methods & information.
+      div(class = "methods-platform-section", includeMarkdown(platform_path)),
+      div(
+        class = "methods-section-divider",
+        span(class = "methods-section-divider-label",
+             sprintf("%s — Methods & Information", pathogen_label))
+      ),
+      div(class = "methods-pathogen-section", includeMarkdown(pathogen_path))
     )
   })
   
