@@ -169,6 +169,20 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = FALSE)
 
+  # Switching the SUBTYPE (within the same pathogen) returns the user to Dataset
+  # Insights. Pathogen switches also change the subtype, but those go to Home via
+  # the active_pathogen observer above; we skip them by comparing the pathogen
+  # now vs. at the previous subtype change. Initialised to the current pathogen so
+  # the very first subtype switch is handled (not mistaken for startup).
+  gs_last_pathogen <- reactiveVal(isolate(active_pathogen()))
+  observeEvent(input$global_subtype, {
+    cur <- active_pathogen()
+    prev <- gs_last_pathogen()
+    gs_last_pathogen(cur)
+    if (!identical(prev, cur)) return(invisible(NULL))  # pathogen switch -> Home (handled elsewhere)
+    updateTabsetPanel(session, "main_nav", selected = "dataset_insights")
+  }, ignoreInit = TRUE)
+
   # --- MEMORY MONITOR & CONTROL ---
   mem_timer <- reactiveTimer(5000) # Update every 5 seconds
   output$mem_usage <- renderText({
@@ -815,7 +829,7 @@ server <- function(input, output, session) {
   get_dominant_variants_for_clade <- function(gene_data, clade_name, min_freq) {
     gene_data %>%
       filter(Clade == clade_name) %>%
-      filter(!(AminoAcid %in% c("X", "-"))) %>%
+      filter(!(AminoAcid %in% c("X"))) %>%
       group_by(Gene, Position, AminoAcid) %>%
       summarise(Variant_Count = sum(Count, na.rm = TRUE), .groups = "drop_last") %>%
       mutate(
@@ -838,7 +852,7 @@ server <- function(input, output, session) {
 
     res <- load_pairwise_gene_data(gene, group_by) %>%
       filter(Position == position) %>%
-      filter(!(AminoAcid %in% c("X", "-")))
+      filter(!(AminoAcid %in% c("X")))
 
     if (nrow(res) == 0) return(empty_pairwise_position_df(include_codon = "Codon_Usage" %in% colnames(res)))
 
@@ -1924,7 +1938,8 @@ server <- function(input, output, session) {
   # option VALUE (the plain position key) is preserved so all downstream logic --
   # selected_position_label(), selected_position_base(), lookups -- stays clean.
   # Works for every gene that has a structure (HA, RSV F, SARS-CoV-2 S).
-  sp_annotate_choices_with_epitopes <- function(choices, subtype, gene, var_type, pdb_id) {
+  sp_annotate_choices_with_epitopes <- function(choices, subtype, gene, var_type, pdb_id,
+                                                 entropy_basis = "balanced") {
     if (length(choices) == 0 || !identical(var_type, "AA")) return(choices)
     values <- unname(choices)
     labels <- names(choices)
@@ -1935,8 +1950,16 @@ server <- function(input, output, session) {
     app_pos_num <- suppressWarnings(as.numeric(sub("\\+.*$", "", labels)))
 
     # ---- entropy chip: a colored card holding the score, low(blue)->high(red) ----
+    # Uses the same basis the user picked on the Conservation page (year-balanced
+    # by default), falling back to all-sequence if the chosen basis has no cache.
     ent_badge <- rep("", length(values))
-    ent <- tryCatch(conservation_cached_entropy(subtype, var_type, gene), error = function(e) NULL)
+    ent <- tryCatch(conservation_cached_entropy(subtype, var_type, gene, basis = entropy_basis),
+                    error = function(e) NULL)
+    if (is.null(ent) || nrow(ent) == 0) {
+      ent <- tryCatch(conservation_cached_entropy(subtype, var_type, gene, basis = "all"),
+                      error = function(e) NULL)
+    }
+    basis_label <- if (identical(entropy_basis, "all")) "all-sequence" else "year-balanced"
     if (!is.null(ent) && nrow(ent) > 0) {
       emax <- suppressWarnings(max(ent$Entropy, na.rm = TRUE))
       if (!is.finite(emax) || emax <= 0) emax <- 1
@@ -1948,10 +1971,10 @@ server <- function(input, output, session) {
       tcols <- ifelse(lum > 0.6, "#1a1a1a", "#ffffff")
       ent_badge <- ifelse(
         is.na(evals), "",
-        sprintf(paste0('<span title="Shannon entropy (conservation)" style="display:inline-block;',
+        sprintf(paste0('<span title="Shannon entropy (%s conservation)" style="display:inline-block;',
                        'background:%s;color:%s;border-radius:3px;padding:0 5px;margin-left:6px;',
                        'font-size:0.78em;font-weight:600;line-height:1.5;vertical-align:middle;">%.2f</span>'),
-                ecols, tcols, evals)
+                basis_label, ecols, tcols, evals)
       )
     }
 
@@ -2008,7 +2031,36 @@ server <- function(input, output, session) {
     suppressWarnings(as.numeric(sub("\\+.*$", "", lbl)))
   })
 
-  observeEvent(list(input$global_subtype, input$variation_type, input$sp_gene, input$sp_structure_variant), {
+  # Entropy basis for the Single Site page: follows the Conservation page's
+  # "Entropy basis" toggle (year-balanced by default; all-sequence only if the
+  # user selected it there).
+  sp_entropy_basis <- reactive({
+    if (identical(input$ent_entropy_mode %||% "balanced", "all")) "all" else "balanced"
+  })
+
+  output$sp_entropy_legend <- renderUI({
+    basis_txt <- if (identical(sp_entropy_basis(), "all")) {
+      "all-sequence"
+    } else {
+      "year-balanced"
+    }
+    div(style = "font-size: 0.78em; color: #666; margin-top: 6px; line-height: 1.6;",
+        HTML(paste0(
+          'The colored chip after each position is its <b>Shannon entropy</b> ',
+          '(site conservation, <b>', basis_txt, '</b> — set on the Conservation page): ',
+          '<span style="background:#2c7bb6;color:#fff;padding:0 5px;border-radius:3px;">conserved</span>',
+          ' &rarr; ',
+          '<span style="background:#ffffbf;color:#1a1a1a;padding:0 5px;border-radius:3px;">mid</span>',
+          ' &rarr; ',
+          '<span style="background:#d7191c;color:#fff;padding:0 5px;border-radius:3px;">variable</span>',
+          '. Colored tags name the epitope / annotation groups at that site.'
+        )))
+  })
+
+  # Repopulate the AA-position dropdown when the DATASET changes (subtype /
+  # variation type / gene). Always reset to the first position (or a pending
+  # "jump to" target) so a stale position from the previous gene never lingers.
+  observeEvent(list(input$global_subtype, input$variation_type, input$sp_gene), {
     choices <- sp_position_choices()
     if (length(choices) == 0) return(invisible(NULL))
     pending_position <- pending_sp_position_jump()
@@ -2016,13 +2068,32 @@ server <- function(input, output, session) {
       selected <- pending_position
       pending_sp_position_jump(NULL)
     } else {
-      selected <- if (!is.null(input$sp_position) && input$sp_position %in% unname(choices)) input$sp_position else unname(choices)[1]
+      selected <- unname(choices)[1]   # reset to position 1
     }
     display_choices <- sp_annotate_choices_with_epitopes(
-      choices, input$global_subtype, input$sp_gene, input$variation_type, input$sp_structure_variant
+      choices, input$global_subtype, input$sp_gene, input$variation_type,
+      input$sp_structure_variant, sp_entropy_basis()
     )
     updateSelectizeInput(session, "sp_position", choices = display_choices, selected = selected, server = TRUE)
   }, ignoreInit = FALSE)
+
+  # Re-annotate the dropdown badges (entropy basis / structure variant) WITHOUT
+  # resetting the selected position.
+  observeEvent(list(input$ent_entropy_mode, input$sp_structure_variant), {
+    req(input$sp_gene)
+    choices <- sp_position_choices()
+    if (length(choices) == 0) return(invisible(NULL))
+    selected <- if (!is.null(input$sp_position) && input$sp_position %in% unname(choices)) {
+      input$sp_position
+    } else {
+      unname(choices)[1]
+    }
+    display_choices <- sp_annotate_choices_with_epitopes(
+      choices, input$global_subtype, input$sp_gene, input$variation_type,
+      input$sp_structure_variant, sp_entropy_basis()
+    )
+    updateSelectizeInput(session, "sp_position", choices = display_choices, selected = selected, server = TRUE)
+  }, ignoreInit = TRUE)
 
   # This observer triggers when any relevant input changes. It performs the heavy
   # calculation and shows a full-screen waiter while doing so.
@@ -2096,7 +2167,7 @@ server <- function(input, output, session) {
         }
       } %>%
       # 2. Filter out "X" and "-"
-      filter(!(AminoAcid %in% c("X", "-"))) %>%
+      filter(!(AminoAcid %in% c("X"))) %>%
       # NEW Step: Aggregate Counts by the grouping column and AminoAcid
       group_by(across(all_of(c(group_cols, "AminoAcid")))) %>%
       summarise(Count = sum(Count, na.rm = TRUE), .groups = "drop_last") %>%
@@ -2682,7 +2753,7 @@ server <- function(input, output, session) {
       num_lab <- ha_numbering_text(input$global_subtype, input$sp_gene, pos, TRUE)
       cur_label <- if (!is.null(num_lab) && nzchar(num_lab)) num_lab else paste("Pos", pos)
     }
-    sv_build_viewer(pdb, residues = ctx$epi_res, mode = input$sp_view_mode %||% "surface",
+    sv_build_viewer(pdb, residues = ctx$epi_res, mode = input$sp_view_mode %||% "cartoon",
                     base_color = "#d9c19a",
                     current = ctx$cur, current_label = cur_label)
   })
@@ -3130,7 +3201,7 @@ server <- function(input, output, session) {
 
           pos_data <- current_gene_data %>%
             filter(Position == r_pos) %>%
-            filter(!(AminoAcid %in% c("X", "-"))) %>%
+            filter(!(AminoAcid %in% c("X"))) %>%
             group_by(Clade, AminoAcid) %>%
             summarise(Count = sum(Count, na.rm = TRUE), .groups = "drop_last") %>%
             mutate(`Frequency(%)` = (Count / sum(Count)) * 100) %>%
@@ -3216,12 +3287,19 @@ server <- function(input, output, session) {
 
     # Year-balanced basis: equal weight per year, ignores the clade group filter
     # (the DuckDB usage table is aggregated per single grouping type, so a
-    # year x clade cross-tab is not available). Falls back to all-sequence.
+    # year x clade cross-tab is not available). Served from the pre-calculated
+    # cache (basis = "balanced"); only recomputed live if the cache lacks it.
+    # Falls back to all-sequence when no year-balanced data exists.
     if (identical(entropy_mode, "balanced")) {
-      ent_data <- tryCatch(
-        usage_year_balanced_entropy(input$global_subtype, input$variation_type, input$ent_gene),
-        error = function(e) NULL
+      ent_data <- conservation_cached_entropy(
+        input$global_subtype, input$variation_type, input$ent_gene, basis = "balanced"
       )
+      if (is.null(ent_data) || nrow(ent_data) == 0) {
+        ent_data <- tryCatch(
+          usage_year_balanced_entropy(input$global_subtype, input$variation_type, input$ent_gene),
+          error = function(e) NULL
+        )
+      }
       entropy_basis_state(if (!is.null(ent_data) && nrow(ent_data) > 0) "balanced" else "all")
     } else {
       entropy_basis_state("all")
@@ -3263,8 +3341,9 @@ server <- function(input, output, session) {
       }
 
       ent_data <- tmp %>%
-        # NEW: Remove "X" and "-" to ensure entropy only measures valid biological variation
-        filter(!(AminoAcid %in% c("X", "-"))) %>%
+        # Exclude only "X" (ambiguous / no-coverage). Deletions ("-") are kept as
+        # a real state so entropy reflects indel variation (e.g. RSV G duplication).
+        filter(!(AminoAcid %in% c("X"))) %>%
         group_by(Position, AminoAcid) %>%
         summarise(AA_Sum = sum(Count, na.rm = TRUE), .groups = "drop_last") %>%
         mutate(
@@ -3360,19 +3439,6 @@ server <- function(input, output, session) {
   })
 
   # Epitope group checkboxes, shown only when epitopes have groups.
-  output$ent_epitope_groups_ui <- renderUI({
-    if (identical(input$variation_type, "NT")) return(NULL)
-    cfg <- sv_get_structure_config(input$global_subtype, input$ent_gene, pdb_id = input$ent_structure_variant)
-    if (is.null(cfg)) return(NULL)
-    epi <- sv_load_epitopes(cfg, input$global_subtype, input$ent_gene)
-    groups <- sv_epitope_groups(epi)
-    if (length(groups) == 0) return(NULL)
-    div(style = "margin-top: 10px; padding: 8px; background: #f5f5f5; border-radius: 4px;",
-        div(style = "font-size: 0.9em; font-weight: bold; margin-bottom: 6px;", "Epitope groups:"),
-        checkboxGroupInput("ent_epitope_groups", NULL, choices = groups, selected = groups,
-                          inline = TRUE))
-  })
-
   # Recreate the viewer element on WebGL context loss (see sp_structure_holder).
   ent_structure_nonce <- reactiveVal(0)
   ent_structure_redraw <- reactiveVal(0)
@@ -3391,7 +3457,7 @@ server <- function(input, output, session) {
     req(!is.null(ctx))
     pdb <- sv_pdb_text(ctx$cfg)
     req(!is.null(pdb))
-    sv_build_viewer(pdb, residues = ctx$residues, mode = input$ent_view_mode %||% "surface")
+    sv_build_viewer(pdb, residues = ctx$residues, mode = input$ent_view_mode %||% "cartoon")
   })
 
   output$ent_structure_legend <- renderUI({
@@ -3653,7 +3719,8 @@ server <- function(input, output, session) {
     if (identical(scalar_input(input$sp_gene), jump_gene)) {
       if (length(position_choices) > 0) {
         display_choices <- sp_annotate_choices_with_epitopes(
-          position_choices, jump_subtype, jump_gene, jump_var_type, input$sp_structure_variant
+          position_choices, jump_subtype, jump_gene, jump_var_type,
+          input$sp_structure_variant, sp_entropy_basis()
         )
         updateSelectizeInput(session, "sp_position", choices = display_choices, selected = position_value, server = FALSE)
       } else {
@@ -3699,7 +3766,7 @@ server <- function(input, output, session) {
       c1 <- lol_usage_data() %>%
         filter(Group == input$global_subtype, Clade == input$lol_ref_group, Gene == input$lol_gene) %>%
         # Step A: Exclude "X" and "-"
-        filter(!(AminoAcid %in% c("X", "-"))) %>%
+        filter(!(AminoAcid %in% c("X"))) %>%
         # NEW Step: Aggregate Counts across sub-groups (Year, Month, etc.) to get clade-wide totals per position
         group_by(Position, AminoAcid) %>%
         summarise(Count = sum(Count, na.rm = TRUE), .groups = "drop_last") %>%
@@ -3719,7 +3786,7 @@ server <- function(input, output, session) {
       c2 <- lol_usage_data() %>%
         filter(Group == input$global_subtype, Clade == input$lol_tar_group, Gene == input$lol_gene) %>%
         # Step A: Exclude "X" and "-"
-        filter(!(AminoAcid %in% c("X", "-"))) %>%
+        filter(!(AminoAcid %in% c("X"))) %>%
         # NEW Step: Aggregate Counts across sub-groups
         group_by(Position, AminoAcid) %>%
         summarise(Count = sum(Count, na.rm = TRUE), .groups = "drop_last") %>%

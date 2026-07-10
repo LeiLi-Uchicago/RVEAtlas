@@ -1617,12 +1617,11 @@ ui <- navbarPage(
                                       condition = "output.ent_structure_available === true",
                                       fluidRow(
                                         column(6, selectInput("ent_view_mode", "Structure style:",
-                                                              choices = c("Surface" = "surface", "Cartoon" = "cartoon",
+                                                              choices = c("Cartoon" = "cartoon", "Surface" = "surface",
                                                                           "Stick" = "stick", "Sphere" = "sphere"),
-                                                              selected = "surface")),
+                                                              selected = "cartoon")),
                                         column(6, uiOutput("ent_structure_variant_ui"))
                                       ),
-                                      uiOutput("ent_epitope_groups_ui"),
                                       div(class = "struct-legend", uiOutput("ent_structure_legend")),
                                       uiOutput("ent_structure_holder")
                                     )
@@ -1818,7 +1817,7 @@ ui <- navbarPage(
                                                     options = list(
                                                       placeholder = "Type/select position",
                                                       create = FALSE,
-                                                      maxOptions = 1000,
+                                                      maxOptions = 100000,  # show all sites (long genes exceed 1000)
                                                       allowEmptyOption = FALSE,
                                                       render = I("{
                                                         option: function(item, escape) {
@@ -1829,17 +1828,7 @@ ui <- navbarPage(
                                                         }
                                                       }")
                                                     )),
-                                     div(style = "font-size: 0.78em; color: #666; margin-top: 6px; line-height: 1.6;",
-                                         HTML(paste0(
-                                           'The colored chip after each position is its ',
-                                           '<b>Shannon entropy</b> (site conservation): ',
-                                           '<span style="background:#2c7bb6;color:#fff;padding:0 5px;border-radius:3px;">conserved</span>',
-                                           ' &rarr; ',
-                                           '<span style="background:#ffffbf;color:#1a1a1a;padding:0 5px;border-radius:3px;">mid</span>',
-                                           ' &rarr; ',
-                                           '<span style="background:#d7191c;color:#fff;padding:0 5px;border-radius:3px;">variable</span>',
-                                           '. Colored tags name the epitope / annotation groups at that site.'
-                                         ))),
+                                     uiOutput("sp_entropy_legend"),
                                      div(class = "sp-numbering-hint", uiOutput("sp_numbering_label")),
                                      div(class = "sp-epitope-info", uiOutput("sp_position_epitope_info"))
                                  )
@@ -1887,9 +1876,9 @@ ui <- navbarPage(
                            condition = "output.sp_structure_available === true",
                            fluidRow(
                              column(6, selectInput("sp_view_mode", "Structure style:",
-                                                   choices = c("Surface" = "surface", "Cartoon" = "cartoon",
+                                                   choices = c("Cartoon" = "cartoon", "Surface" = "surface",
                                                                "Stick" = "stick", "Sphere" = "sphere"),
-                                                   selected = "surface")),
+                                                   selected = "cartoon")),
                              column(6, uiOutput("sp_structure_variant_ui"))
                            ),
                            uiOutput("sp_epitope_groups_ui"),

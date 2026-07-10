@@ -1,7 +1,13 @@
-CONSERVATION_CACHE_SCHEMA_VERSION <- 1L
+# v3: entropy now counts deletions ("-") as a real state (only "X" is excluded),
+# so indel positions reflect present-vs-absent variation. Invalidates v2 caches.
+CONSERVATION_CACHE_SCHEMA_VERSION <- 3L
 CONSERVATION_CACHE_REQUIRED_COLUMNS <- c(
   "Subtype", "Variation_Type", "Gene", "Position", "Entropy", "Pos_Total"
 )
+# v2 adds pre-calculated year-balanced entropy alongside the all-sequence values,
+# so the Conservation page serves both bases from cache instead of recomputing
+# the year-balanced entropy live on every render.
+CONSERVATION_CACHE_BALANCED_COLUMNS <- c("Entropy_Balanced", "Pos_Total_Balanced")
 
 conservation_entropy_from_counts <- function(counts) {
   required <- c("Position", "AminoAcid", "Count")
@@ -95,18 +101,28 @@ conservation_cache_valid <- function(
   )
 }
 
-conservation_cache_lookup <- function(cache, subtype, variation_type, gene) {
+conservation_cache_lookup <- function(cache, subtype, variation_type, gene, basis = "all") {
   if (!is.list(cache) || !is.data.frame(cache$data)) return(NULL)
   data <- cache$data
   if (!all(CONSERVATION_CACHE_REQUIRED_COLUMNS %in% names(data))) return(NULL)
 
-  result <- data[
-    as.character(data$Subtype) == as.character(subtype) &
-      as.character(data$Variation_Type) == as.character(variation_type) &
-      as.character(data$Gene) == as.character(gene),
-    c("Position", "Entropy", "Pos_Total"),
-    drop = FALSE
-  ]
+  rows <- as.character(data$Subtype) == as.character(subtype) &
+    as.character(data$Variation_Type) == as.character(variation_type) &
+    as.character(data$Gene) == as.character(gene)
+
+  # Year-balanced basis: serve the pre-calculated balanced columns (present only
+  # in schema v2+), renamed to Entropy/Pos_Total so callers are basis-agnostic.
+  if (identical(basis, "balanced")) {
+    if (!all(CONSERVATION_CACHE_BALANCED_COLUMNS %in% names(data))) return(NULL)
+    result <- data[rows, c("Position", "Entropy_Balanced", "Pos_Total_Balanced"), drop = FALSE]
+    result <- result[!is.na(result$Entropy_Balanced), , drop = FALSE]
+    if (nrow(result) == 0) return(NULL)
+    names(result) <- c("Position", "Entropy", "Pos_Total")
+    return(result)
+  }
+
+  result <- data[rows, c("Position", "Entropy", "Pos_Total"), drop = FALSE]
+  result <- result[!is.na(result$Entropy), , drop = FALSE]
   if (nrow(result) == 0) NULL else result
 }
 
@@ -153,28 +169,75 @@ build_conservation_entropy_cache <- function(pathogen_id) {
         groups <- usage_available_groups(subtype, variation_type, gene)
         if (length(groups) == 0) next
 
+        # All-sequence entropy (every sequence weighted equally).
         entropy <- tryCatch(
           usage_entropy_data(subtype, variation_type, gene, groups[[1]], "All"),
           error = function(error) {
             warning(
-              "Could not precompute Conservation entropy for ",
+              "Could not precompute all-sequence entropy for ",
               pathogen_id, " / ", subtype, " / ", variation_type, " / ", gene,
-              ": ", conditionMessage(error),
-              call. = FALSE
+              ": ", conditionMessage(error), call. = FALSE
             )
             NULL
           }
         )
-        if (is.null(entropy) || nrow(entropy) == 0) next
+        # Year-balanced entropy (each year weighted equally). NULL when there is
+        # no per-year grouping to balance over.
+        balanced <- tryCatch(
+          usage_year_balanced_entropy(subtype, variation_type, gene),
+          error = function(error) {
+            warning(
+              "Could not precompute year-balanced entropy for ",
+              pathogen_id, " / ", subtype, " / ", variation_type, " / ", gene,
+              ": ", conditionMessage(error), call. = FALSE
+            )
+            NULL
+          }
+        )
+
+        has_all <- !is.null(entropy) && nrow(entropy) > 0
+        has_bal <- !is.null(balanced) && nrow(balanced) > 0
+        if (!has_all && !has_bal) next
+
+        base <- if (has_all) {
+          data.frame(
+            Position = as.numeric(entropy$Position),
+            Entropy = as.numeric(entropy$Entropy),
+            Pos_Total = as.numeric(entropy$Pos_Total),
+            stringsAsFactors = FALSE
+          )
+        } else {
+          data.frame(
+            Position = as.numeric(balanced$Position),
+            Entropy = NA_real_, Pos_Total = NA_real_,
+            stringsAsFactors = FALSE
+          )
+        }
+        if (has_bal) {
+          bal <- data.frame(
+            Position = as.numeric(balanced$Position),
+            Entropy_Balanced = as.numeric(balanced$Entropy),
+            Pos_Total_Balanced = as.numeric(balanced$Pos_Total),
+            stringsAsFactors = FALSE
+          )
+          merged <- merge(base, bal, by = "Position", all = TRUE)
+        } else {
+          merged <- base
+          merged$Entropy_Balanced <- NA_real_
+          merged$Pos_Total_Balanced <- NA_real_
+        }
+        merged <- merged[order(merged$Position), , drop = FALSE]
 
         row_index <- row_index + 1L
         result_rows[[row_index]] <- data.frame(
           Subtype = as.character(subtype),
           Variation_Type = as.character(variation_type),
           Gene = as.character(gene),
-          Position = entropy$Position,
-          Entropy = as.numeric(entropy$Entropy),
-          Pos_Total = as.numeric(entropy$Pos_Total),
+          Position = merged$Position,
+          Entropy = merged$Entropy,
+          Pos_Total = merged$Pos_Total,
+          Entropy_Balanced = merged$Entropy_Balanced,
+          Pos_Total_Balanced = merged$Pos_Total_Balanced,
           stringsAsFactors = FALSE
         )
       }
@@ -189,6 +252,8 @@ build_conservation_entropy_cache <- function(pathogen_id) {
       Position = numeric(),
       Entropy = numeric(),
       Pos_Total = numeric(),
+      Entropy_Balanced = numeric(),
+      Pos_Total_Balanced = numeric(),
       stringsAsFactors = FALSE
     )
   } else {
@@ -272,13 +337,14 @@ load_conservation_entropy_cache <- function(pathogen_id) {
   cache
 }
 
-conservation_cached_entropy <- function(subtype, variation_type, gene) {
+conservation_cached_entropy <- function(subtype, variation_type, gene, basis = "all") {
   pathogen_id <- pathogen_from_subtype(subtype)
   if (is.na(pathogen_id)) return(NULL)
   conservation_cache_lookup(
     load_conservation_entropy_cache(pathogen_id),
     subtype,
     variation_type,
-    gene
+    gene,
+    basis = basis
   )
 }

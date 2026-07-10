@@ -57,6 +57,12 @@ POS_EXPRS <- "
   CASE WHEN position LIKE '%+%' THEN CAST(split_part(position, '+', 2) AS INTEGER) ELSE 0 END AS InsertionOffset,
   CAST(split_part(split_part(position, ':', 2), '+', 1) AS DOUBLE) AS PositionOrder"
 
+# Normalize deletion / no-coverage tokens to the app's AA vocabulary, matching
+# the standard (RSV/CHIKV) builder: raw 'DEL' -> '-' (real alignment gap),
+# 'MISSING' -> 'X' (ambiguous / no coverage). Without this COVID keeps literal
+# 'DEL'/'MISSING', which aren't in ALL_AAS/aa_colors.
+AA_EXPR <- "CASE WHEN aa = 'DEL' THEN '-' WHEN aa = 'MISSING' THEN 'X' ELSE aa END AS AA"
+
 # Normalize (Year, Month) -> "YYYY-MM" / "YYYY-Unknown", matching the app.
 YM_EXPR <- "
   CASE
@@ -76,7 +82,7 @@ build_usage_duckdb <- function() {
   con <- dbConnect(duckdb::duckdb(), DUCKDB, read_only = FALSE)
   on.exit(dbDisconnect(con, shutdown = TRUE))
   dbExecute(con, "PRAGMA memory_limit='4GB'")
-  dbExecute(con, "PRAGMA threads=4")
+  dbExecute(con, "PRAGMA threads=1")
 
   dbExecute(con, "CREATE TABLE usage (
     Protein VARCHAR, GroupType VARCHAR, GroupValue VARCHAR,
@@ -96,20 +102,28 @@ build_usage_duckdb <- function() {
       dbExecute(con, sprintf(
         "INSERT INTO usage
          SELECT '%s' AS Protein, '%s' AS GroupType, CAST(\"%s\" AS VARCHAR) AS GroupValue,
-                %s, aa AS AA, codon AS Codon, SUM(CAST(count AS DOUBLE)) AS Count
+                %s, %s, codon AS Codon, SUM(CAST(count AS DOUBLE)) AS Count
          FROM %s GROUP BY ALL",
-        p, scheme, scheme, POS_EXPRS, read_csv_sql(f)))
+        p, scheme, scheme, POS_EXPRS, AA_EXPR, read_csv_sql(f)))
     }
-    # --- Year_month derived from the full-coverage clade file (no doubling) ---
+    # --- Year_month + Year, derived from the full-coverage clade file (no doubling).
+    # The Year grouping feeds year-balanced conservation entropy (the covid raw
+    # otherwise has no per-year GroupType, only clade schemes + Year_month). ---
     ym_src <- raw_file(p, YM_SOURCE)
     if (file.exists(ym_src)) {
-      message("  ", p, " / Year_month (derived from ", YM_SOURCE, ")")
+      message("  ", p, " / Year_month + Year (derived from ", YM_SOURCE, ")")
       dbExecute(con, sprintf(
         "INSERT INTO usage
          SELECT '%s' AS Protein, 'Year_month' AS GroupType, %s AS GroupValue,
-                %s, aa AS AA, codon AS Codon, SUM(CAST(count AS DOUBLE)) AS Count
+                %s, %s, codon AS Codon, SUM(CAST(count AS DOUBLE)) AS Count
          FROM %s GROUP BY ALL",
-        p, YM_EXPR, POS_EXPRS, read_csv_sql(ym_src)))
+        p, YM_EXPR, POS_EXPRS, AA_EXPR, read_csv_sql(ym_src)))
+      dbExecute(con, sprintf(
+        "INSERT INTO usage
+         SELECT '%s' AS Protein, 'Year' AS GroupType, CAST(Year AS VARCHAR) AS GroupValue,
+                %s, %s, codon AS Codon, SUM(CAST(count AS DOUBLE)) AS Count
+         FROM %s GROUP BY ALL",
+        p, POS_EXPRS, AA_EXPR, read_csv_sql(ym_src)))
     }
   }
   n <- dbGetQuery(con, "SELECT COUNT(*) AS n FROM usage")$n
@@ -121,7 +135,7 @@ build_metadata_summary <- function() {
   stage <- tempfile(fileext = ".duckdb")
   con <- dbConnect(duckdb::duckdb(), stage, read_only = FALSE)
   on.exit({ dbDisconnect(con, shutdown = TRUE); unlink(stage) })
-  dbExecute(con, "PRAGMA memory_limit='4GB'"); dbExecute(con, "PRAGMA threads=4")
+  dbExecute(con, "PRAGMA memory_limit='4GB'"); dbExecute(con, "PRAGMA threads=1")
 
   fill_cols <- c("clade_who", "Nextclade_pango", "Nextstrain_clade", "pango_lineage",
                  "region", "country", "division", "host")

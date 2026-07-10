@@ -21,6 +21,7 @@ library(r3dmol)               # 3D protein structure viewer (3Dmol.js htmlwidget
 source(file.path("R", "conservation-filter.R"), local = TRUE)
 source(file.path("R", "conservation-cache.R"), local = TRUE)
 source(file.path("R", "structure-view.R"), local = TRUE)
+source(file.path("R", "adapter-cache-build.R"), local = TRUE)
 
 USE_DUCKDB <- requireNamespace("duckdb", quietly = TRUE) && requireNamespace("DBI", quietly = TRUE)
 if (!USE_DUCKDB) {
@@ -802,7 +803,7 @@ aa_colors <- c(
   "K"="#999999", "L"="#66C2A5", "M"="#FC8D62", "N"="#8DA0CB",
   "P"="#E78AC3", "Q"="#A6D854", "R"="#FFD92F", "S"="#E5C494",
   "T"="#B3B3B3", "V"="#1B9E77", "W"="#D95F02", "Y"="#7570B3",
-  "*"="#000000", "X"="#D3D3D3", "-"="#808080"
+  "*"="#000000", "X"="#D3D3D3", "-"="#000000"
 )
 
 nt_colors <- c(
@@ -1041,7 +1042,7 @@ usage_single_position <- function(subtype, var_type, gene, group_by, position, a
               ANY_VALUE(Codon_Usage) AS Codon_Usage
        FROM usage
        WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND Grouping_Type = 'Year_Month'
-         AND Position = ? AND AminoAcid NOT IN ('X', '-')",
+         AND Position = ? AND AminoAcid <> 'X'",
       ym_filter,
       " GROUP BY \"Group\", Gene, Position,
          CASE
@@ -1059,7 +1060,7 @@ usage_single_position <- function(subtype, var_type, gene, group_by, position, a
             ANY_VALUE(Codon_Usage) AS Codon_Usage
      FROM usage
      WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND Grouping_Type = ?
-       AND Position = ? AND AminoAcid NOT IN ('X', '-')",
+       AND Position = ? AND AminoAcid <> 'X'",
     ym_filter,
     " GROUP BY \"Group\", Gene, Position,
        CASE WHEN Grouping_Type = 'Year_Month' THEN Year_Month_Filter ELSE Clade END,
@@ -1140,7 +1141,7 @@ usage_pairwise_differences_for_gene <- function(subtype, var_type, gene, group_b
        FROM usage
        WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND Grouping_Type = ?
          AND CASE WHEN Grouping_Type = 'Year_Month' THEN Year_Month_Filter ELSE Clade END IN (?, ?)
-         AND AminoAcid NOT IN ('X', '-')
+         AND AminoAcid <> 'X'
        GROUP BY Gene, Position,
          CASE WHEN Grouping_Type = 'Year_Month' THEN Year_Month_Filter ELSE Clade END,
          AminoAcid
@@ -1179,7 +1180,7 @@ usage_position_distribution <- function(subtype, var_type, gene, group_by, posit
   if (is.null(res)) return(NULL)
 
   res <- res %>%
-    filter(Position == position, !(AminoAcid %in% c("X", "-")))
+    filter(Position == position, !(AminoAcid %in% c("X")))
 
   if (is.null(res) || nrow(res) == 0) return(NULL)
 
@@ -1216,7 +1217,7 @@ usage_entropy_data <- function(subtype, var_type, gene, group_by, clade = "All")
        FROM usage
        WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND Grouping_Type = ?",
       clade_filter,
-      " AND AminoAcid NOT IN ('X', '-')
+      " AND AminoAcid <> 'X'
        GROUP BY Position, AminoAcid"
     ),
     params
@@ -1243,7 +1244,7 @@ usage_lollipop_consensus <- function(subtype, var_type, gene, group_by, ref_grou
        FROM usage
        WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND Grouping_Type = ?
          AND CASE WHEN Grouping_Type = 'Year_Month' THEN Year_Month_Filter ELSE Clade END IN (?, ?)
-         AND AminoAcid NOT IN ('X', '-')
+         AND AminoAcid <> 'X'
        GROUP BY Position,
          CASE WHEN Grouping_Type = 'Year_Month' THEN Year_Month_Filter ELSE Clade END,
          AminoAcid
@@ -1989,7 +1990,7 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
           "SELECT GroupValue
            FROM usage
            WHERE Protein = ? AND GroupType = ? AND ", pos_filter$sql, "
-             AND AA NOT IN ('X', '-') AND GroupValue IS NOT NULL AND GroupValue <> ''
+             AND AA <> 'X' AND GroupValue IS NOT NULL AND GroupValue <> ''
            GROUP BY GroupValue
            ORDER BY SUM(Count) DESC, GroupValue
            LIMIT ?"
@@ -2007,7 +2008,7 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
                 PositionBase AS Position, COALESCE(PositionLabel, CAST(PositionBase AS VARCHAR)) AS Position_Label,
                 Position AS Position_Key, AA AS AminoAcid, SUM(Count) AS Count, ANY_VALUE(Codon) AS Codon_Usage
          FROM usage
-         WHERE Protein = ? AND GroupType = ? AND ", pos_filter$sql, " AND AA NOT IN ('X', '-')",
+         WHERE Protein = ? AND GroupType = ? AND ", pos_filter$sql, " AND AA <> 'X'",
         clade_filter,
         "
          GROUP BY Protein, GroupValue, PositionBase, PositionLabel, Position, AA"
@@ -2025,7 +2026,7 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
                 Position, Position_Label, Position_Key, Year_Month, AminoAcid,
                 SUM(Count) AS Count, ANY_VALUE(Codon_Usage) AS Codon_Usage
          FROM usage_clade_time
-         WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND ", pos_filter$sql, " AND AminoAcid NOT IN ('X', '-')
+         WHERE \"Group\" = ? AND Variation_Type = ? AND Gene = ? AND ", pos_filter$sql, " AND AminoAcid <> 'X'
          GROUP BY Gene, Clade, Position, Position_Label, Position_Key, Year_Month, AminoAcid"
       ),
       list(raw_subtype, var_type, gene, pos_filter$value)
@@ -2038,7 +2039,7 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
                 Position, Position_Label, Position_Key, Year_Month, AminoAcid,
                 SUM(Count) AS Count, ANY_VALUE(Codon_Usage) AS Codon_Usage
          FROM usage
-         WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = 'Year_Month' AND ", pos_filter$sql, " AND AminoAcid NOT IN ('X', '-')
+         WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = 'Year_Month' AND ", pos_filter$sql, " AND AminoAcid <> 'X'
            AND Year_Month IS NOT NULL
          GROUP BY Gene, SUBSTR(Year_Month, 1, 4), Position, Position_Label, Position_Key, Year_Month, AminoAcid"
       ),
@@ -2051,7 +2052,7 @@ adapter_single_position <- function(subtype, var_type, gene, group_by, position,
         "SELECT ", adapter_quote(cfg, subtype), " AS \"Group\", Gene, ", standard_group_value_sql(), " AS Clade,
                 Position, Position_Label, Position_Key, Year_Month, AminoAcid, SUM(Count) AS Count, ANY_VALUE(Codon_Usage) AS Codon_Usage
          FROM usage
-         WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = ? AND ", pos_filter$sql, " AND AminoAcid NOT IN ('X', '-')
+         WHERE \"Group\" = ? AND Gene = ? AND Grouping_Type = ? AND ", pos_filter$sql, " AND AminoAcid <> 'X'
          GROUP BY Gene, ", standard_group_value_sql(), ", Position, Position_Label, Position_Key, Year_Month, AminoAcid"
       ),
       list(raw_subtype, gene, group_by, pos_filter$value)
@@ -2103,7 +2104,7 @@ adapter_group_limit_summary <- function(subtype, var_type, gene, group_by, posit
          SELECT GroupValue, SUM(Count) AS Group_Count
          FROM usage
          WHERE Protein = ? AND GroupType = ? AND ", pos_filter$sql, "
-           AND AA NOT IN ('X', '-') AND GroupValue IS NOT NULL AND GroupValue <> ''
+           AND AA <> 'X' AND GroupValue IS NOT NULL AND GroupValue <> ''
          GROUP BY GroupValue
        ),
        ranked AS (
@@ -2138,7 +2139,7 @@ adapter_group_limit_summary <- function(subtype, var_type, gene, group_by, posit
 adapter_pairwise_differences_for_gene <- function(subtype, var_type, gene, group_by, clade1, clade2, min_freq) {
   res <- adapter_pairwise_gene_data(subtype, var_type, gene, group_by, clades = c(clade1, clade2))
   if (is.null(res) || nrow(res) == 0) return(NULL)
-  res <- res %>% filter(!(.data$AminoAcid %in% c("X", "-")))
+  res <- res %>% filter(!(.data$AminoAcid %in% c("X")))
   top <- res %>%
     group_by(.data$Gene, .data$Position, .data$Clade, .data$AminoAcid) %>%
     summarise(Variant_Count = sum(.data$Count, na.rm = TRUE), .groups = "drop") %>%
@@ -2174,7 +2175,7 @@ adapter_entropy_data <- function(subtype, var_type, gene, group_by, clade = "All
   res <- adapter_pairwise_gene_data(subtype, var_type, gene, group_by, clades = if (identical(clade, "All")) NULL else clade)
   if (is.null(res) || nrow(res) == 0) return(NULL)
   res %>%
-    filter(!(.data$AminoAcid %in% c("X", "-"))) %>%
+    filter(!(.data$AminoAcid %in% c("X"))) %>%
     group_by(.data$Position, .data$AminoAcid) %>%
     summarise(AA_Sum = sum(.data$Count, na.rm = TRUE), .groups = "drop") %>%
     group_by(.data$Position) %>%
@@ -2226,11 +2227,35 @@ usage_single_position <- function(subtype, var_type, gene, group_by, position, a
   }
 }
 
-# The raw-to-cache startup path above builds the primary RDS/DuckDB data first.
-# Conservation caches are generated here, after all pathogen adapters and query
-# helpers are available, so both fresh raw conversions and normal app startups
-# share the same validation/rebuild workflow.
-ensure_all_conservation_entropy_caches(force = FALSE)
+# Build any adapter-pathogen (COVID/RSV/CHIKV) cache that is missing but has raw
+# data present. Mirrors the FLU raw->cache path so that, at startup, every
+# pathogen with raw data under data/raw/<PATHOGEN>/ but no cache under
+# data/cache/<PATHOGEN>/ gets built before its data is queried. Pathogens with a
+# cache already, or with no raw data, are left untouched.
+ensure_adapter_caches <- function() {
+  if (!USE_DUCKDB) return(invisible(NULL))
+  for (pid in names(PATHOGEN_ADAPTERS)) {
+    cfg <- PATHOGEN_ADAPTERS[[pid]]
+    if (is.null(cfg$duckdb)) next                        # FLU: built by its own path
+    raw_root <- file.path("data", "raw", pid)
+    has_raw <- dir.exists(raw_root) &&
+      length(list.files(raw_root, recursive = TRUE, pattern = "^usage_.*\\.tsv$")) > 0
+    if (file.exists(cfg$duckdb) || !has_raw) next        # already cached, or nothing to build
+    message("Cache for ", pid, " is missing but raw data is present -- building from raw...")
+    tryCatch({
+      if (identical(cfg$schema, "standard")) {
+        build_standard_adapter_cache(pid)
+      } else if (identical(cfg$schema, "covid")) {
+        build_covid_adapter_cache()
+      } else {
+        message("  no builder for schema '", cfg$schema, "' (", pid, ") -- skipping")
+      }
+    }, error = function(e) {
+      message("  build FAILED for ", pid, ": ", conditionMessage(e))
+    })
+  }
+  invisible(NULL)
+}
 
 usage_group_limit_summary <- function(subtype, var_type, gene, group_by, position, top_n_groups = NULL) {
   if (missing_subtype(subtype) || is_flu_subtype(subtype)) return(NULL)
@@ -2276,7 +2301,7 @@ usage_year_balanced_entropy <- function(subtype, var_type, gene) {
 
   df <- res %>%
     dplyr::filter(
-      !(.data$AminoAcid %in% c("X", "-")),
+      !(.data$AminoAcid %in% c("X")),
       !.data$Clade %in% c("Unknown", "unassigned", "Unassigned"),
       !is.na(.data$Clade), !is.na(.data$Count)
     ) %>%
@@ -2325,3 +2350,13 @@ usage_lollipop_consensus <- function(subtype, var_type, gene, group_by, ref_grou
     adapter_pairwise_differences_for_gene(subtype, var_type, gene, group_by, ref_group, tar_group, min_freq)
   }
 }
+
+# --- Startup cache build (must run LAST) -------------------------------------
+# These run after ALL query dispatchers (usage_entropy_data, usage_year_balanced_
+# entropy, adapter_* ...) are defined, so conservation pre-calculation uses the
+# correct flu-vs-adapter dispatch and the year-balanced function. `ensure_adapter_
+# caches()` first builds any missing COVID/RSV/CHIKV duckdb+metadata from raw;
+# then conservation entropy (all-sequence + year-balanced) is pre-calculated for
+# every pathogen.
+ensure_adapter_caches()
+ensure_all_conservation_entropy_caches(force = FALSE)
