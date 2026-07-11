@@ -899,6 +899,11 @@ usage_db_conn <- function() {
   if (is.null(usage_db_env$con) || !DBI::dbIsValid(usage_db_env$con)) {
     usage_db_env$con <- DBI::dbConnect(duckdb::duckdb(), dbdir = DUCKDB_CACHE, read_only = TRUE)
     DBI::dbExecute(usage_db_env$con, "PRAGMA memory_limit='700MB'")
+    # Work around a DuckDB optimizer crash ("Attempted to access index 0 within
+    # vector of size 0" in StatisticsPropagator::TryExecuteAggregates) that can
+    # abort aggregate queries on some caches. Disabling just this optimizer pass
+    # avoids the crash with no behavioural change.
+    try(DBI::dbExecute(usage_db_env$con, "SET disabled_optimizers='statistics_propagation'"), silent = TRUE)
   }
 
   usage_db_env$con
@@ -1687,6 +1692,8 @@ adapter_db_conn <- function(cfg) {
   if (is.null(con) || !DBI::dbIsValid(con)) {
     con <- DBI::dbConnect(duckdb::duckdb(), dbdir = cfg$duckdb, read_only = TRUE)
     DBI::dbExecute(con, "PRAGMA memory_limit='700MB'")
+    # See usage_db_conn(): avoid the StatisticsPropagator aggregate-optimizer crash.
+    try(DBI::dbExecute(con, "SET disabled_optimizers='statistics_propagation'"), silent = TRUE)
     adapter_db_env[[key]] <- con
   }
   con

@@ -54,6 +54,92 @@ ui <- navbarPage(
     tags$link(rel = "shortcut icon", href = "app_icon_round.png"),
     use_waiter(),
     shinyjs::useShinyjs(),
+    # --- Pathogen/subtype switch overlay (self-contained; independent of the
+    # `waiter` package to avoid colliding with the per-output withWaiter/autoWaiter
+    # instances, which previously left a stuck full-screen mask on some switches). ---
+    tags$style(HTML("
+      #rve-switch-overlay {
+        position: fixed; inset: 0; z-index: 20000;
+        display: none; align-items: center; justify-content: center;
+        flex-direction: column; text-align: center;
+        background: rgba(44, 62, 80, 0.92); color: #fff;
+        transition: opacity 0.15s ease; opacity: 0;
+      }
+      #rve-switch-overlay.rve-visible { display: flex; opacity: 1; }
+      #rve-switch-overlay .rve-spinner {
+        width: 54px; height: 54px; margin-bottom: 22px;
+        border: 5px solid rgba(255,255,255,0.25); border-top-color: #fff;
+        border-radius: 50%; animation: rve-spin 0.8s linear infinite;
+      }
+      @keyframes rve-spin { to { transform: rotate(360deg); } }
+      #rve-switch-overlay .rve-switch-title { font-size: 1.5em; font-weight: 600; margin: 0; }
+      #rve-switch-overlay .rve-switch-sub { margin-top: 10px; opacity: 0.85; }
+    ")),
+    tags$script(HTML("
+      (function(){
+        var MIN_MS = 500;        // keep the indicator on screen at least this long
+        var IDLE_MS = 350;       // hide this long after Shiny stops recomputing
+        var active = false, shownAt = 0;
+        var safetyTimer = null, idleTimer = null, minTimer = null;
+        function ensureEl(){
+          var el = document.getElementById('rve-switch-overlay');
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'rve-switch-overlay';
+            el.innerHTML = '<div class=\"rve-spinner\"></div>' +
+              '<h3 class=\"rve-switch-title\"></h3>' +
+              '<p class=\"rve-switch-sub\"></p>';
+            document.body.appendChild(el);
+          }
+          return el;
+        }
+        function clearTimers(){
+          [safetyTimer, idleTimer, minTimer].forEach(function(t){ if (t) clearTimeout(t); });
+          safetyTimer = idleTimer = minTimer = null;
+        }
+        function reallyHide(){
+          active = false;
+          var el = document.getElementById('rve-switch-overlay');
+          if (el) el.classList.remove('rve-visible');
+          clearTimers();
+        }
+        function requestHide(){
+          if (!active) return;
+          // Respect a minimum on-screen time so fast switches don't just flicker.
+          var elapsed = Date.now() - shownAt;
+          if (elapsed >= MIN_MS) reallyHide();
+          else { if (minTimer) clearTimeout(minTimer); minTimer = setTimeout(reallyHide, MIN_MS - elapsed); }
+        }
+        function show(msg){
+          var el = ensureEl();
+          el.querySelector('.rve-switch-title').textContent = (msg && msg.title) || 'Loading…';
+          el.querySelector('.rve-switch-sub').textContent = (msg && msg.subtitle) || '';
+          clearTimers();
+          shownAt = Date.now();
+          active = true;
+          el.classList.add('rve-visible');
+          // Safety net: never let the mask stick permanently under any circumstance.
+          safetyTimer = setTimeout(reallyHide, 15000);
+        }
+        // Hide when Shiny finishes recomputing: stay up through the whole busy
+        // period (busy cancels any pending hide), then hide once it has been idle
+        // for IDLE_MS. This needs no server 'hide' message, so it can't get stuck
+        // waiting on a flush that never comes.
+        $(document).on('shiny:busy', function(){ if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; } });
+        $(document).on('shiny:idle', function(){
+          if (!active) return;
+          if (idleTimer) clearTimeout(idleTimer);
+          idleTimer = setTimeout(requestHide, IDLE_MS);
+        });
+        // If an output errors, the app may not settle into a clean idle; hide anyway
+        // so a failed switch can never leave the page behind a frozen mask.
+        $(document).on('shiny:error', function(){ if (active) requestHide(); });
+        Shiny.addCustomMessageHandler('rveSwitchOverlayShow', show);
+        Shiny.addCustomMessageHandler('rveSwitchOverlayHide', requestHide);
+        // Drop the mask if the connection dies, so the page never looks frozen.
+        $(document).on('shiny:disconnected', reallyHide);
+      })();
+    ")),
     # Auto-recover the 3D structure viewers from WebGL context loss. A lost
     # context (heavy surface rebuilds / GPU pressure) blanks the r3dmol canvas
     # with no server error and previously needed a full page refresh. We catch

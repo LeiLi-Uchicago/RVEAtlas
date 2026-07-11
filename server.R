@@ -247,17 +247,12 @@ server <- function(input, output, session) {
   }, once = TRUE)
 
   show_switch_overlay <- function(title, subtitle) {
-    waiter_show(
-      html = tagList(
-        spin_fading_circles(),
-        tags$h3(title, style = "color:white; margin-top: 20px;"),
-        tags$p(subtitle, style = "color:white;")
-      ),
-      color = "rgba(44, 62, 80, 0.92)"
-    )
-    session$onFlushed(function() {
-      waiter_hide()
-    }, once = TRUE)
+    # Custom overlay (see ui.R) — independent of `waiter` so it can't collide with
+    # the per-output withWaiter instances. The server only SHOWS it; the client
+    # hides it on Shiny's `shiny:idle` (when recomputation finishes), plus a safety
+    # auto-hide. This avoids relying on a server 'hide' message that would need a
+    # later flush to be delivered (which previously left the mask stuck).
+    session$sendCustomMessage("rveSwitchOverlayShow", list(title = title, subtitle = subtitle))
   }
 
   # Pathogen switch: "Switching to <pathogen> ..."
