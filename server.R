@@ -238,27 +238,63 @@ server <- function(input, output, session) {
   })
 
   # --- GLOBAL LOADING INDICATOR FOR CONTEXT SWITCH ---
+  # Overlay shown while the app loads a newly selected pathogen or subtype, so the
+  # (heavier) reactive rebuild reads as a smooth, explained transition rather than
+  # a UI freeze. Suppressed until the initial page flush so it never flashes on load.
   app_ready_for_context_waiter <- reactiveVal(FALSE)
   session$onFlushed(function() {
     app_ready_for_context_waiter(TRUE)
   }, once = TRUE)
 
-  observeEvent(list(input$global_subtype, input$variation_type), {
-    if (!isTRUE(app_ready_for_context_waiter())) return(invisible(NULL))
-    if (is.null(input$main_nav) || identical(input$main_nav, "home")) return(invisible(NULL))
-
+  show_switch_overlay <- function(title, subtitle) {
     waiter_show(
       html = tagList(
         spin_fading_circles(),
-        tags$h3("Updating Dataset...", style = "color:white; margin-top: 20px;"),
-        tags$p("Please wait while we update the application context.", style = "color:white;")
+        tags$h3(title, style = "color:white; margin-top: 20px;"),
+        tags$p(subtitle, style = "color:white;")
       ),
-      color = "rgba(44, 62, 80, 0.9)"
+      color = "rgba(44, 62, 80, 0.92)"
     )
-    
     session$onFlushed(function() {
       waiter_hide()
     }, once = TRUE)
+  }
+
+  # Pathogen switch: "Switching to <pathogen> ..."
+  observeEvent(input$active_pathogen, {
+    if (!isTRUE(app_ready_for_context_waiter())) return(invisible(NULL))
+    pathogen <- scalar_input(input$active_pathogen) %||% "FLU"
+    label <- PATHOGEN_ADAPTERS[[pathogen]]$label %||% pathogen
+    show_switch_overlay(
+      sprintf("Switching to %s…", label),
+      "Loading pathogen data. Please wait."
+    )
+  }, ignoreInit = TRUE, priority = 200)
+
+  # Subtype switch within the same pathogen: "Switching to <subtype> ..."
+  # We track BOTH the previous pathogen and the previous subtype so the overlay
+  # fires only on a genuine user subtype switch, and never on:
+  #   - a pathogen switch (subtype cascades to a new value)      -> pathogen overlay covers it
+  #   - the initial picker settle after load / URL init          -> prev_subtype is NULL
+  #   - a no-op re-emit of the same subtype value.
+  overlay_prev_pathogen <- reactiveVal(isolate(active_pathogen()))
+  overlay_prev_subtype  <- reactiveVal(NULL)
+  observeEvent(input$global_subtype, {
+    if (!isTRUE(app_ready_for_context_waiter())) return(invisible(NULL))
+    cur_path <- active_pathogen()
+    prev_path <- overlay_prev_pathogen(); overlay_prev_pathogen(cur_path)
+    cur_sub <- scalar_input(input$global_subtype)
+    prev_sub <- overlay_prev_subtype(); overlay_prev_subtype(cur_sub)
+
+    if (!identical(cur_path, prev_path)) return(invisible(NULL))  # pathogen switch -> pathogen overlay
+    if (is.null(prev_sub)) return(invisible(NULL))                # first settle after load
+    if (identical(cur_sub, prev_sub)) return(invisible(NULL))     # no real change
+    if (is.null(cur_sub) || !nzchar(cur_sub)) return(invisible(NULL))
+
+    show_switch_overlay(
+      sprintf("Switching to %s…", cur_sub),
+      "Please wait while we update the application context."
+    )
   }, ignoreInit = TRUE, priority = 100)
 
   gc_explorer_cache <- new.env(parent = emptyenv())
