@@ -1,6 +1,8 @@
 # v3: entropy now counts deletions ("-") as a real state (only "X" is excluded),
 # so indel positions reflect present-vs-absent variation. Invalidates v2 caches.
-CONSERVATION_CACHE_SCHEMA_VERSION <- 3L
+# v4: year-balanced entropy now down-weights sparse years (< YEAR_MIN_FULL_WEIGHT
+# strains) instead of weighting every year equally. Recompute needed.
+CONSERVATION_CACHE_SCHEMA_VERSION <- 4L
 CONSERVATION_CACHE_REQUIRED_COLUMNS <- c(
   "Subtype", "Variation_Type", "Gene", "Position", "Entropy", "Pos_Total"
 )
@@ -101,7 +103,7 @@ conservation_cache_valid <- function(
   )
 }
 
-conservation_cache_lookup <- function(cache, subtype, variation_type, gene, basis = "all") {
+conservation_cache_lookup <- function(cache, subtype, variation_type, gene, basis = "all", min_seqs = 0) {
   if (!is.list(cache) || !is.data.frame(cache$data)) return(NULL)
   data <- cache$data
   if (!all(CONSERVATION_CACHE_REQUIRED_COLUMNS %in% names(data))) return(NULL)
@@ -109,19 +111,28 @@ conservation_cache_lookup <- function(cache, subtype, variation_type, gene, basi
   rows <- as.character(data$Subtype) == as.character(subtype) &
     as.character(data$Variation_Type) == as.character(variation_type) &
     as.character(data$Gene) == as.character(gene)
+  sub <- data[rows, , drop = FALSE]
+
+  # Minimum-sequence guard: hide positions covered by fewer than `min_seqs`
+  # strains (entropy there is small-sample noise). Always keyed on the raw
+  # all-sequence Pos_Total so the threshold means "actual strains", not the
+  # year-balanced weighted total.
+  if (min_seqs > 0 && "Pos_Total" %in% names(sub)) {
+    sub <- sub[is.na(sub$Pos_Total) | sub$Pos_Total >= min_seqs, , drop = FALSE]
+  }
 
   # Year-balanced basis: serve the pre-calculated balanced columns (present only
   # in schema v2+), renamed to Entropy/Pos_Total so callers are basis-agnostic.
   if (identical(basis, "balanced")) {
-    if (!all(CONSERVATION_CACHE_BALANCED_COLUMNS %in% names(data))) return(NULL)
-    result <- data[rows, c("Position", "Entropy_Balanced", "Pos_Total_Balanced"), drop = FALSE]
+    if (!all(CONSERVATION_CACHE_BALANCED_COLUMNS %in% names(sub))) return(NULL)
+    result <- sub[, c("Position", "Entropy_Balanced", "Pos_Total_Balanced"), drop = FALSE]
     result <- result[!is.na(result$Entropy_Balanced), , drop = FALSE]
     if (nrow(result) == 0) return(NULL)
     names(result) <- c("Position", "Entropy", "Pos_Total")
     return(result)
   }
 
-  result <- data[rows, c("Position", "Entropy", "Pos_Total"), drop = FALSE]
+  result <- sub[, c("Position", "Entropy", "Pos_Total"), drop = FALSE]
   result <- result[!is.na(result$Entropy), , drop = FALSE]
   if (nrow(result) == 0) NULL else result
 }
@@ -337,7 +348,8 @@ load_conservation_entropy_cache <- function(pathogen_id) {
   cache
 }
 
-conservation_cached_entropy <- function(subtype, variation_type, gene, basis = "all") {
+conservation_cached_entropy <- function(subtype, variation_type, gene, basis = "all",
+                                        min_seqs = if (exists("ENTROPY_MIN_SEQS")) ENTROPY_MIN_SEQS else 0L) {
   pathogen_id <- pathogen_from_subtype(subtype)
   if (is.na(pathogen_id)) return(NULL)
   conservation_cache_lookup(
@@ -345,6 +357,26 @@ conservation_cached_entropy <- function(subtype, variation_type, gene, basis = "
     subtype,
     variation_type,
     gene,
-    basis = basis
+    basis = basis,
+    min_seqs = min_seqs
   )
+}
+
+# Subset of `genes` that actually have conservation to display, i.e. at least one
+# position surviving the min-sequence guard. Used to drop genes with no scorable
+# entropy (e.g. H5NX NA_N4/N7/N9, with <300 sequences each) from the Conservation
+# gene selector. Returns the input unchanged if nothing qualifies, so the dropdown
+# is never left empty.
+conservation_scorable_genes <- function(subtype, variation_type, genes,
+                                        min_seqs = if (exists("ENTROPY_MIN_SEQS")) ENTROPY_MIN_SEQS else 0L) {
+  if (length(genes) == 0) return(genes)
+  keep <- vapply(genes, function(g) {
+    ent <- tryCatch(
+      conservation_cached_entropy(subtype, variation_type, g, basis = "all", min_seqs = min_seqs),
+      error = function(e) NULL
+    )
+    !is.null(ent) && nrow(ent) > 0
+  }, logical(1))
+  if (!any(keep)) return(genes)
+  genes[keep]
 }

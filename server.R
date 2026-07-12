@@ -768,13 +768,19 @@ server <- function(input, output, session) {
       return(available_list[1])
     }
     
+    # Conservation gene list drops (a) genes with no scorable entropy (every
+    # position below the min-sequence guard) and (b) H5NX NA subtypes with no
+    # reference alignment (N3..N9) whose conservation is not meaningful.
+    ent_genes <- conservation_scorable_genes(input$global_subtype, input$variation_type, genes)
+    ent_genes <- setdiff(ent_genes, conservation_unreferenced_genes(input$global_subtype, genes))
+
     sel_sp   <- get_best_gene(input$sp_gene, genes)
-    sel_ent  <- get_best_gene(input$ent_gene, genes)
+    sel_ent  <- get_best_gene(input$ent_gene, ent_genes)
     sel_lol  <- get_best_gene(input$lol_gene, genes)
     # sel_heat <- get_best_gene(input$heat_gene, genes)
-    
+
     updateSelectInput(session, "sp_gene", choices = genes, selected = sel_sp)
-    updateSelectInput(session, "ent_gene", choices = genes, selected = sel_ent)
+    updateSelectInput(session, "ent_gene", choices = ent_genes, selected = sel_ent)
     updateSelectInput(session, "lol_gene", choices = genes, selected = sel_lol)
     # updateSelectInput(session, "heat_gene", choices = genes, selected = sel_heat)
   })
@@ -2071,6 +2077,8 @@ server <- function(input, output, session) {
   # "Entropy basis" toggle (year-balanced by default; all-sequence only if the
   # user selected it there).
   sp_entropy_basis <- reactive({
+    # H5NX NA subtypes: force all-sequence (year-balanced is unreliable there).
+    if (is_h5nx_na_gene(input$global_subtype, input$sp_gene)) return("all")
     if (identical(input$ent_entropy_mode %||% "balanced", "all")) "all" else "balanced"
   })
 
@@ -2080,17 +2088,33 @@ server <- function(input, output, session) {
     } else {
       "year-balanced"
     }
-    div(style = "font-size: 0.78em; color: #666; margin-top: 6px; line-height: 1.6;",
+    h5nx_na <- is_h5nx_na_gene(input$global_subtype, input$sp_gene)
+    tagList(
+      div(style = "font-size: 0.78em; color: #666; margin-top: 6px; line-height: 1.6;",
+          HTML(paste0(
+            'The colored chip after each position is its <b>Shannon entropy</b> ',
+            '(site conservation, <b>', basis_txt, '</b>',
+            if (h5nx_na) '' else ' — set on the Conservation page',
+            '): ',
+            '<span style="background:#2c7bb6;color:#fff;padding:0 5px;border-radius:3px;">conserved</span>',
+            ' &rarr; ',
+            '<span style="background:#ffffbf;color:#1a1a1a;padding:0 5px;border-radius:3px;">mid</span>',
+            ' &rarr; ',
+            '<span style="background:#d7191c;color:#fff;padding:0 5px;border-radius:3px;">variable</span>',
+            '. Positions with fewer than ', ENTROPY_MIN_SEQS, ' sequences are not scored. ',
+            'Colored tags name the epitope / annotation groups at that site.'
+          ))),
+      if (h5nx_na) div(
+        style = paste("font-size: 0.78em; margin-top: 8px; padding: 8px 10px;",
+                      "background:#fff8e1; border-left:3px solid #f0ad4e; border-radius:4px; color:#6b5900;"),
         HTML(paste0(
-          'The colored chip after each position is its <b>Shannon entropy</b> ',
-          '(site conservation, <b>', basis_txt, '</b> — set on the Conservation page): ',
-          '<span style="background:#2c7bb6;color:#fff;padding:0 5px;border-radius:3px;">conserved</span>',
-          ' &rarr; ',
-          '<span style="background:#ffffbf;color:#1a1a1a;padding:0 5px;border-radius:3px;">mid</span>',
-          ' &rarr; ',
-          '<span style="background:#d7191c;color:#fff;padding:0 5px;border-radius:3px;">variable</span>',
-          '. Colored tags name the epitope / annotation groups at that site.'
-        )))
+          '<b>H5NX neuraminidase:</b> showing <b>all-sequence</b> entropy for this NA subtype. ',
+          'H5NX pools many divergent NA lineages across hosts and decades, so year-balanced ',
+          'weighting over-emphasises a few old/sparse strains. Some NA subtypes (e.g. N5, N6) ',
+          'are also affected by alignment noise — interpret their entropy with caution.'
+        ))
+      )
+    )
   })
 
   # Repopulate the AA-position dropdown when the DATASET changes (subtype /
@@ -3276,12 +3300,19 @@ server <- function(input, output, session) {
     conservation_effective_group(input$ent_filter_enabled, input$ent_group)
   })
 
+  # Effective entropy mode: honour the user's toggle, except for H5NX NA subtypes
+  # where year-balanced is unreliable and we force all-sequence.
+  ent_effective_mode <- reactive({
+    if (is_h5nx_na_gene(input$global_subtype, input$ent_gene)) return("all")
+    input$ent_entropy_mode %||% "balanced"
+  })
+
   output$ent_plot_title <- renderText({
     effective_group <- ent_effective_group()
     clade_text <- if(effective_group == "All") paste("All", input$ent_group_by) else paste(input$ent_group_by, effective_group)
     mode_text <- if(input$variation_type == "AA") "Amino Acid" else "Nucleotide"
-    if (identical(input$ent_entropy_mode %||% "balanced", "balanced")) {
-      paste(mode_text, "Year-Balanced Shannon Entropy - Subtype", input$global_subtype, "| Gene", input$ent_gene, "| equal weight per year")
+    if (identical(ent_effective_mode(), "balanced")) {
+      paste(mode_text, "Year-Balanced Shannon Entropy - Subtype", input$global_subtype, "| Gene", input$ent_gene, "| sparse years down-weighted")
     } else {
       paste(mode_text, "Shannon Entropy Landscape - Subtype", input$global_subtype, "| Gene", input$ent_gene, "|", clade_text)
     }
@@ -3289,17 +3320,28 @@ server <- function(input, output, session) {
 
   output$ent_basis_note <- renderUI({
     ent_data <- entropy_site_summary()  # ensures basis state is current
-    mode <- input$ent_entropy_mode %||% "balanced"
+    mode <- ent_effective_mode()
     state <- entropy_basis_state()
-    if (identical(mode, "balanced") && identical(state, "balanced")) {
+    forced_all <- is_h5nx_na_gene(input$global_subtype, input$ent_gene)
+    guard_txt <- paste0("Positions with fewer than ", ENTROPY_MIN_SEQS, " sequences are not scored.")
+    if (forced_all) {
+      div(class = "ent-basis-note ent-basis-warn",
+          HTML(paste0(
+            "<b>H5NX neuraminidase:</b> showing all-sequence entropy for this NA subtype. ",
+            "H5NX pools many divergent NA lineages across hosts and decades, so year-balanced ",
+            "weighting over-emphasises a few old/sparse strains; some NA subtypes (e.g. N5, N6) ",
+            "also carry alignment noise. Interpret with caution. ", guard_txt)))
+    } else if (identical(mode, "balanced") && identical(state, "balanced")) {
       div(class = "ent-basis-note",
-          "Year-balanced: each year contributes equally, correcting for uneven sampling across years. The clade group filter is ignored in this mode.")
+          paste("Year-balanced: each adequately-sampled year contributes equally; years with fewer",
+                "than", YEAR_MIN_FULL_WEIGHT, "strains are down-weighted so a few rare strains can't",
+                "dominate. The clade group filter is ignored in this mode.", guard_txt))
     } else if (identical(mode, "balanced") && identical(state, "all")) {
       div(class = "ent-basis-note ent-basis-warn",
-          "Year-resolved data is unavailable for this selection — showing all-sequence entropy instead.")
+          paste("Year-resolved data is unavailable for this selection — showing all-sequence entropy instead.", guard_txt))
     } else {
       div(class = "ent-basis-note",
-          "All-sequence entropy: every sequence contributes equally, so heavily sampled years dominate.")
+          paste("All-sequence entropy: every sequence contributes equally, so heavily sampled years dominate.", guard_txt))
     }
   })
 
@@ -3317,7 +3359,7 @@ server <- function(input, output, session) {
   entropy_site_summary <- reactive({
     req(input$global_subtype, input$variation_type, input$ent_gene, input$ent_group_by)
     effective_group <- ent_effective_group()
-    entropy_mode <- input$ent_entropy_mode %||% "balanced"
+    entropy_mode <- ent_effective_mode()
 
     ent_data <- NULL
 
@@ -3332,7 +3374,9 @@ server <- function(input, output, session) {
       )
       if (is.null(ent_data) || nrow(ent_data) == 0) {
         ent_data <- tryCatch(
-          usage_year_balanced_entropy(input$global_subtype, input$variation_type, input$ent_gene),
+          entropy_apply_min_seqs(
+            usage_year_balanced_entropy(input$global_subtype, input$variation_type, input$ent_gene)
+          ),
           error = function(e) NULL
         )
       }

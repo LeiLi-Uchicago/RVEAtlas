@@ -48,6 +48,45 @@ COUNT_RDS_CACHE_DIR <- file.path("data", "cache", "FLU", "count_cache")
 VALIDATION_ONLY_COUNT_COLS <- c("CodonStatus", "CodonSource")
 FORCE_REBUILD_FLU_CACHE <- identical(tolower(Sys.getenv("FLUEXPLORER_REBUILD_FLU_CACHE", "false")), "true")
 
+# --- Entropy display / weighting controls ---------------------------------
+# A position needs at least this many sequences (with a real residue) before its
+# entropy is shown. Below this, entropy is dominated by noise/small samples and
+# is misleading, so it is suppressed on the Conservation and Single Site views.
+ENTROPY_MIN_SEQS <- 300L
+# Year-balanced entropy weights each year, but a year with very few strains is
+# unreliable and should not count as a full year. Years with >= this many strains
+# get full weight 1; years below it are down-weighted proportionally (n / this),
+# so e.g. a 1-strain year contributes only 0.1 of a well-sampled year.
+YEAR_MIN_FULL_WEIGHT <- 10L
+
+# H5NX pools many divergent NA subtypes (NA_N1..NA_N9) across hosts/decades, where
+# year-balanced weighting over-emphasises a few old/sparse strains and some
+# subtypes are alignment-inflated. For those genes we default to all-sequence
+# entropy and flag it in the UI.
+is_h5nx_na_gene <- function(subtype, gene) {
+  identical(as.character(subtype), "H5NX") && grepl("^NA($|_)", as.character(gene))
+}
+
+# H5NX NA subtypes that have a curated reference alignment. The others (N3..N9)
+# lack a reference, so per-site conservation for them is not meaningful and those
+# genes are hidden from the Conservation page.
+H5NX_NA_REFERENCE_GENES <- c("NA_N1", "NA_N2")
+
+# Genes to hide from the Conservation gene selector because there is no reference
+# to align them against (currently: H5NX NA subtypes outside the reference set).
+conservation_unreferenced_genes <- function(subtype, genes) {
+  if (!identical(as.character(subtype), "H5NX")) return(character(0))
+  na_genes <- genes[grepl("^NA_N", genes)]
+  setdiff(na_genes, H5NX_NA_REFERENCE_GENES)
+}
+
+# Drop positions covered by fewer than `min_seqs` strains from an entropy data
+# frame (used for live-computed entropy that doesn't go through the cache guard).
+entropy_apply_min_seqs <- function(df, min_seqs = ENTROPY_MIN_SEQS) {
+  if (is.null(df) || !is.data.frame(df) || min_seqs <= 0 || !"Pos_Total" %in% names(df)) return(df)
+  df[is.na(df$Pos_Total) | df$Pos_Total >= min_seqs, , drop = FALSE]
+}
+
 metadata_file_path <- function(subtype) {
   file.path(RAW_DATA_DIR, subtype, "metadata_merged_annotated.csv")
 }
@@ -2315,26 +2354,37 @@ usage_year_balanced_entropy <- function(subtype, var_type, gene) {
     dplyr::rename(Year = "Clade")
   if (nrow(df) == 0) return(NULL)
 
-  df <- df %>%
+  # Per Position x Year: strain coverage and a reliability weight. Years with
+  # >= YEAR_MIN_FULL_WEIGHT strains count as a full year (weight 1); sparse years
+  # are down-weighted proportionally so a handful of old/rare strains can't
+  # dominate the balanced entropy.
+  year_stats <- df %>%
     dplyr::group_by(.data$Position, .data$Year) %>%
-    dplyr::mutate(Year_Total = sum(.data$Count, na.rm = TRUE)) %>%
-    dplyr::ungroup() %>%
+    dplyr::summarise(Year_Total = sum(.data$Count, na.rm = TRUE), .groups = "drop") %>%
     dplyr::filter(.data$Year_Total > 0) %>%
-    dplyr::mutate(p_year = .data$Count / .data$Year_Total)
+    dplyr::mutate(w_year = pmin(1, .data$Year_Total / YEAR_MIN_FULL_WEIGHT))
 
-  pos_years <- df %>%
+  # Weighted per-year residue fractions -> weighted-mean fraction across years.
+  aa_year <- df %>%
+    dplyr::group_by(.data$Position, .data$Year, .data$AminoAcid) %>%
+    dplyr::summarise(Count = sum(.data$Count, na.rm = TRUE), .groups = "drop") %>%
+    dplyr::inner_join(year_stats, by = c("Position", "Year")) %>%
+    dplyr::mutate(wp = (.data$Count / .data$Year_Total) * .data$w_year)
+
+  pos_w <- year_stats %>%
     dplyr::group_by(.data$Position) %>%
     dplyr::summarise(
+      W_Total = sum(.data$w_year),
+      Pos_Total = sum(.data$Year_Total),
       N_Years = dplyr::n_distinct(.data$Year),
-      Pos_Total = sum(.data$Count),
       .groups = "drop"
     )
 
-  df %>%
+  aa_year %>%
     dplyr::group_by(.data$Position, .data$AminoAcid) %>%
-    dplyr::summarise(p_sum = sum(.data$p_year), .groups = "drop") %>%
-    dplyr::left_join(pos_years, by = "Position") %>%
-    dplyr::mutate(p_bal = .data$p_sum / .data$N_Years) %>%
+    dplyr::summarise(wp_sum = sum(.data$wp), .groups = "drop") %>%
+    dplyr::left_join(pos_w, by = "Position") %>%
+    dplyr::mutate(p_bal = .data$wp_sum / .data$W_Total) %>%
     dplyr::group_by(.data$Position) %>%
     dplyr::summarise(
       Entropy = -sum(ifelse(.data$p_bal > 0, .data$p_bal * log2(.data$p_bal), 0)),
