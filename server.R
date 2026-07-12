@@ -246,13 +246,16 @@ server <- function(input, output, session) {
     app_ready_for_context_waiter(TRUE)
   }, once = TRUE)
 
-  show_switch_overlay <- function(title, subtitle) {
+  show_switch_overlay <- function(title, subtitle, pathogen = NULL) {
     # Custom overlay (see ui.R) — independent of `waiter` so it can't collide with
     # the per-output withWaiter instances. The server only SHOWS it; the client
     # hides it on Shiny's `shiny:idle` (when recomputation finishes), plus a safety
     # auto-hide. This avoids relying on a server 'hide' message that would need a
-    # later flush to be delivered (which previously left the mask stuck).
-    session$sendCustomMessage("rveSwitchOverlayShow", list(title = title, subtitle = subtitle))
+    # later flush to be delivered (which previously left the mask stuck). `pathogen`
+    # selects the cartoon virus shown (FLU/RSV/COVID/CHIKV).
+    session$sendCustomMessage("rveSwitchOverlayShow", list(
+      title = title, subtitle = subtitle, pathogen = pathogen %||% "FLU"
+    ))
   }
 
   # Pathogen switch: "Switching to <pathogen> ..."
@@ -262,7 +265,8 @@ server <- function(input, output, session) {
     label <- PATHOGEN_ADAPTERS[[pathogen]]$label %||% pathogen
     show_switch_overlay(
       sprintf("Switching to %s…", label),
-      "Loading pathogen data. Please wait."
+      "Loading pathogen data. Please wait.",
+      pathogen = pathogen
     )
   }, ignoreInit = TRUE, priority = 200)
 
@@ -288,7 +292,8 @@ server <- function(input, output, session) {
 
     show_switch_overlay(
       sprintf("Switching to %s…", cur_sub),
-      "Please wait while we update the application context."
+      "Please wait while we update the application context.",
+      pathogen = cur_path
     )
   }, ignoreInit = TRUE, priority = 100)
 

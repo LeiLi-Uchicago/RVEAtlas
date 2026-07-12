@@ -62,84 +62,44 @@ ui <- navbarPage(
         position: fixed; inset: 0; z-index: 20000;
         display: none; align-items: center; justify-content: center;
         flex-direction: column; text-align: center;
-        background: rgba(44, 62, 80, 0.92); color: #fff;
-        transition: opacity 0.15s ease; opacity: 0;
+        background: radial-gradient(circle at 50% 42%,
+                    var(--rve-ov-accent, rgba(70,90,115,0.40)), rgba(41,55,74,0.80));
+        color: #fff; transition: opacity 0.2s ease; opacity: 0;
+        -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
       }
       #rve-switch-overlay.rve-visible { display: flex; opacity: 1; }
+      /* Cartoon virus that floats, with a slowly spinning spike corona and a blink. */
+      #rve-switch-overlay .rve-art {
+        width: 220px; height: 220px; margin-bottom: 10px;
+        filter: drop-shadow(0 12px 18px rgba(0,0,0,0.22));
+        animation: rve-float 2.6s ease-in-out infinite;
+      }
+      @keyframes rve-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+      #rve-switch-overlay .rve-spikes {
+        transform-box: fill-box; transform-origin: center;
+        animation: rve-rot 11s linear infinite;
+      }
+      @keyframes rve-rot { to { transform: rotate(360deg); } }
+      #rve-switch-overlay .rve-eyes {
+        transform-box: fill-box; transform-origin: center;
+        animation: rve-blink 4.2s infinite;
+      }
+      @keyframes rve-blink { 0%,92%,100% { transform: scaleY(1); } 96% { transform: scaleY(0.12); } }
+      #rve-switch-overlay .rve-switch-title { font-size: 1.55em; font-weight: 700; margin: 4px 0 0; color: #000; }
+      #rve-switch-overlay .rve-switch-sub { margin-top: 8px; color: #000; opacity: 0.75; }
+      /* Fallback spinner if the cartoon ever fails to render. */
       #rve-switch-overlay .rve-spinner {
         width: 54px; height: 54px; margin-bottom: 22px;
         border: 5px solid rgba(255,255,255,0.25); border-top-color: #fff;
-        border-radius: 50%; animation: rve-spin 0.8s linear infinite;
+        border-radius: 50%; animation: rve-rot 0.8s linear infinite;
       }
-      @keyframes rve-spin { to { transform: rotate(360deg); } }
-      #rve-switch-overlay .rve-switch-title { font-size: 1.5em; font-weight: 600; margin: 0; }
-      #rve-switch-overlay .rve-switch-sub { margin-top: 10px; opacity: 0.85; }
+      @media (prefers-reduced-motion: reduce) {
+        #rve-switch-overlay .rve-art,
+        #rve-switch-overlay .rve-spikes,
+        #rve-switch-overlay .rve-eyes { animation: none; }
+      }
     ")),
-    tags$script(HTML("
-      (function(){
-        var MIN_MS = 500;        // keep the indicator on screen at least this long
-        var IDLE_MS = 350;       // hide this long after Shiny stops recomputing
-        var active = false, shownAt = 0;
-        var safetyTimer = null, idleTimer = null, minTimer = null;
-        function ensureEl(){
-          var el = document.getElementById('rve-switch-overlay');
-          if (!el) {
-            el = document.createElement('div');
-            el.id = 'rve-switch-overlay';
-            el.innerHTML = '<div class=\"rve-spinner\"></div>' +
-              '<h3 class=\"rve-switch-title\"></h3>' +
-              '<p class=\"rve-switch-sub\"></p>';
-            document.body.appendChild(el);
-          }
-          return el;
-        }
-        function clearTimers(){
-          [safetyTimer, idleTimer, minTimer].forEach(function(t){ if (t) clearTimeout(t); });
-          safetyTimer = idleTimer = minTimer = null;
-        }
-        function reallyHide(){
-          active = false;
-          var el = document.getElementById('rve-switch-overlay');
-          if (el) el.classList.remove('rve-visible');
-          clearTimers();
-        }
-        function requestHide(){
-          if (!active) return;
-          // Respect a minimum on-screen time so fast switches don't just flicker.
-          var elapsed = Date.now() - shownAt;
-          if (elapsed >= MIN_MS) reallyHide();
-          else { if (minTimer) clearTimeout(minTimer); minTimer = setTimeout(reallyHide, MIN_MS - elapsed); }
-        }
-        function show(msg){
-          var el = ensureEl();
-          el.querySelector('.rve-switch-title').textContent = (msg && msg.title) || 'Loading…';
-          el.querySelector('.rve-switch-sub').textContent = (msg && msg.subtitle) || '';
-          clearTimers();
-          shownAt = Date.now();
-          active = true;
-          el.classList.add('rve-visible');
-          // Safety net: never let the mask stick permanently under any circumstance.
-          safetyTimer = setTimeout(reallyHide, 15000);
-        }
-        // Hide when Shiny finishes recomputing: stay up through the whole busy
-        // period (busy cancels any pending hide), then hide once it has been idle
-        // for IDLE_MS. This needs no server 'hide' message, so it can't get stuck
-        // waiting on a flush that never comes.
-        $(document).on('shiny:busy', function(){ if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; } });
-        $(document).on('shiny:idle', function(){
-          if (!active) return;
-          if (idleTimer) clearTimeout(idleTimer);
-          idleTimer = setTimeout(requestHide, IDLE_MS);
-        });
-        // If an output errors, the app may not settle into a clean idle; hide anyway
-        // so a failed switch can never leave the page behind a frozen mask.
-        $(document).on('shiny:error', function(){ if (active) requestHide(); });
-        Shiny.addCustomMessageHandler('rveSwitchOverlayShow', show);
-        Shiny.addCustomMessageHandler('rveSwitchOverlayHide', requestHide);
-        // Drop the mask if the connection dies, so the page never looks frozen.
-        $(document).on('shiny:disconnected', reallyHide);
-      })();
-    ")),
+    tags$script(src = "switch-overlay.js"),
     # Auto-recover the 3D structure viewers from WebGL context loss. A lost
     # context (heavy surface rebuilds / GPU pressure) blanks the r3dmol canvas
     # with no server error and previously needed a full page refresh. We catch
