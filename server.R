@@ -3661,6 +3661,31 @@ server <- function(input, output, session) {
         )
       )
 
+    # Structural / functional region bands (HA, Spike, RSV F). Translucent
+    # full-height rectangles behind the markers, with a small label per region.
+    # Positions are in app-Position coordinates, i.e. the entropy x-axis.
+    region_shapes <- list(); region_annotations <- list()
+    regions <- sv_gene_regions(input$global_subtype, input$ent_gene)
+    if (nrow(regions) > 0 && nrow(ent_data) > 0) {
+      xr <- range(ent_data$Position_Order, na.rm = TRUE)
+      for (i in seq_len(nrow(regions))) {
+        x0 <- max(xr[1] - 0.5, regions$start[[i]] - 0.5)
+        x1 <- min(xr[2] + 0.5, regions$end[[i]] + 0.5)
+        if (!is.finite(x0) || !is.finite(x1) || x1 <= x0) next
+        rgb <- grDevices::col2rgb(regions$color[[i]])
+        region_shapes[[length(region_shapes) + 1L]] <- list(
+          type = "rect", xref = "x", yref = "paper", x0 = x0, x1 = x1, y0 = 0, y1 = 1,
+          fillcolor = sprintf("rgba(%d,%d,%d,0.11)", rgb[1], rgb[2], rgb[3]),
+          line = list(width = 0), layer = "below")
+        region_annotations[[length(region_annotations) + 1L]] <- list(
+          x = (x0 + x1) / 2, xref = "x", y = 0.99, yref = "paper",
+          xanchor = "center", yanchor = "top", showarrow = FALSE,
+          text = regions$region[[i]],
+          font = list(family = "Arial", size = 9, color = regions$color[[i]]),
+          bgcolor = "rgba(255,255,255,0.72)", borderpad = 1)
+      }
+    }
+
     plot_ly() %>%
       add_trace(
         data = ent_data %>% filter(.data$Variant_Class == "High Variant"),
@@ -3727,8 +3752,8 @@ server <- function(input, output, session) {
         paper_bgcolor = "#ffffff",
         legend = list(orientation = "h", x = 0, y = 1.08),
         
-        # ADD HORIZONTAL LINES
-        shapes = list(
+        # Region bands (below) + entropy threshold lines
+        shapes = c(region_shapes, list(
           list(
             type = "line",
             x0 = 0, x1 = 1, xref = "paper", # Spans the whole width
@@ -3737,27 +3762,27 @@ server <- function(input, output, session) {
           ),
           list(
             type = "line",
-            x0 = 0, x1 = 1, xref = "paper", 
+            x0 = 0, x1 = 1, xref = "paper",
             y0 = thresholds$high, y1 = thresholds$high, yref = "y",
             line = list(color = "red", dash = "dash", width = 1.5)
           )
-        ),
-        
-        # ADD LABELS FOR THE LINES
-        annotations = list(
+        )),
+
+        # Region labels + threshold-line labels
+        annotations = c(region_annotations, list(
           list(
             x = 1, y = thresholds$mid + 0.05, xref = "paper", yref = "y",
             text = "Mid Variant", showarrow = FALSE,
-            xanchor = "right", yanchor = "bottom", 
+            xanchor = "right", yanchor = "bottom",
             font = list(color = "orange", size = 10)
           ),
           list(
             x = 1, y = thresholds$high + 0.05, xref = "paper", yref = "y",
             text = "High Variant", showarrow = FALSE,
-            xanchor = "right", yanchor = "bottom", 
+            xanchor = "right", yanchor = "bottom",
             font = list(color = "red", size = 10)
           )
-        )
+        ))
       ) %>%
       config(displayModeBar = FALSE)
   })

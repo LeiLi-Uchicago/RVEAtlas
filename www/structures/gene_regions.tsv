@@ -1,0 +1,34 @@
+# Structural / functional regions drawn as translucent bands on the Conservation
+# (entropy) plot. Positions are in the app Position coordinate (= entropy x-axis).
+# HA rows are derived from ha_numbering_review_table.csv; Spike/RSV-F are literature
+# constants in native numbering. Regenerate with tools/generate_gene_regions.R.
+subtype	gene	region	start	end	color
+H1N1	HA	Signal peptide	1	17	#7f8c8d
+H1N1	HA	HA1	18	338	#2980b9
+H1N1	HA	HA2	345	506	#e67e22
+H1N1	HA	TM / cytoplasmic	507	566	#34495e
+H3N2	HA	Signal peptide	1	16	#7f8c8d
+H3N2	HA	HA1	17	344	#2980b9
+H3N2	HA	HA2	346	520	#e67e22
+H3N2	HA	TM / cytoplasmic	521	566	#34495e
+H5NX	HA	Signal peptide	1	16	#7f8c8d
+H5NX	HA	HA1	17	336	#2980b9
+H5NX	HA	HA2	347	508	#e67e22
+H5NX	HA	TM / cytoplasmic	509	569	#34495e
+COVID:SARS-CoV-2	S	Signal peptide	1	13	#7f8c8d
+COVID:SARS-CoV-2	S	NTD	14	305	#2980b9
+COVID:SARS-CoV-2	S	RBD	319	541	#16a085
+COVID:SARS-CoV-2	S	Fusion peptide	816	837	#c0392b
+COVID:SARS-CoV-2	S	HR1	912	984	#8e44ad
+COVID:SARS-CoV-2	S	HR2	1163	1213	#9b59b6
+COVID:SARS-CoV-2	S	TM	1214	1237	#34495e
+RSV:A	F	Signal peptide	1	25	#7f8c8d
+RSV:A	F	F2	26	109	#2980b9
+RSV:A	F	p27	110	136	#f1c40f
+RSV:A	F	F1	137	524	#e67e22
+RSV:A	F	TM	525	550	#34495e
+RSV:B	F	Signal peptide	1	25	#7f8c8d
+RSV:B	F	F2	26	109	#2980b9
+RSV:B	F	p27	110	136	#f1c40f
+RSV:B	F	F1	137	524	#e67e22
+RSV:B	F	TM	525	550	#34495e

@@ -377,6 +377,27 @@ sv_position_epitope_groups <- function(position, region, epitope_df) {
   sort(unique(hits$group[!is.na(hits$group) & nzchar(hits$group)]))
 }
 
+# ---- Gene regions (entropy-plot annotation bands) --------------------------
+
+# Structural / functional regions for a subtype+gene, as data.frame(region,
+# start, end, color) in app-Position coordinates (the entropy x-axis). Loaded
+# from www/structures/gene_regions.tsv (see tools/generate_gene_regions.R).
+sv_gene_regions <- function(subtype, gene, dir = sv_structure_dir()) {
+  empty <- data.frame(region = character(), start = numeric(), end = numeric(),
+                      color = character(), stringsAsFactors = FALSE)
+  path <- file.path(dir, "gene_regions.tsv")
+  if (!file.exists(path)) return(empty)
+  df <- sv_read_tsv(path)
+  need <- c("subtype", "gene", "region", "start", "end", "color")
+  if (!all(need %in% names(df))) return(empty)
+  df <- df[df$subtype == as.character(subtype) & df$gene == as.character(gene), , drop = FALSE]
+  if (nrow(df) == 0) return(empty)
+  df$start <- suppressWarnings(as.numeric(df$start))
+  df$end <- suppressWarnings(as.numeric(df$end))
+  df <- df[!is.na(df$start) & !is.na(df$end) & df$end >= df$start, , drop = FALSE]
+  df[, c("region", "start", "end", "color"), drop = FALSE]
+}
+
 # ---- Viewer builders (r3dmol) ----------------------------------------------
 # These reference r3dmol only inside the function bodies, so the module still
 # sources cleanly (for unit tests) without the package attached.
