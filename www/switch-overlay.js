@@ -15,8 +15,35 @@
   var SAFETY_MS = 15000;
   var HOLD_MS = 1600;  // "hold" mode: wait up to this long for the busy that a
                        // debounced recompute triggers before allowing idle-hide
+  var WAIT_MS = 6000;  // if the awaited output never updates, stop waiting after this
   var active = false, shownAt = 0;
-  var safetyTimer = null, idleTimer = null, minTimer = null, holdTimer = null;
+  var safetyTimer = null, idleTimer = null, minTimer = null, holdTimer = null, waitTimer = null;
+  // When set, idle-hide is suppressed until the named element's DOM content
+  // actually changes — used so the mask stays up until, e.g., the Home pathogen
+  // text refreshes, which lands a flush (or two) after shiny:idle. We watch the
+  // element directly with a MutationObserver (robust to event-timing quirks),
+  // and also clear on the matching shiny:value as a backup.
+  var waitFor = null, waiting = false, waitObserver = null, waitInitialText = "";
+  function stopWaitObserver() {
+    if (waitObserver) { waitObserver.disconnect(); waitObserver = null; }
+  }
+  function contentUpdated() {
+    if (!waiting) return;
+    waiting = false;
+    stopWaitObserver();
+    if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
+    armIdleHide();
+  }
+  // Only treat the awaited element as "ready" once it holds real, CHANGED text.
+  // Shiny blanks the output while recomputing, so we must ignore that transient
+  // empty state (and any re-render back to the same text) and wait for the new
+  // content to actually land.
+  function maybeReady() {
+    if (!waiting || !waitFor) return;
+    var el = document.getElementById(waitFor);
+    var txt = el ? (el.textContent || "").trim() : "";
+    if (txt.length > 0 && txt !== waitInitialText) contentUpdated();
+  }
   // In "hold" mode the overlay is shown BEFORE the server work starts (e.g. the
   // single-site position change, which is debounced ~800ms). We must not let the
   // idle that follows the mere input flush hide the overlay before that work
@@ -91,22 +118,27 @@
   }
 
   function clearTimers() {
-    [safetyTimer, idleTimer, minTimer, holdTimer].forEach(function (t) { if (t) clearTimeout(t); });
-    safetyTimer = idleTimer = minTimer = holdTimer = null;
+    [safetyTimer, idleTimer, minTimer, holdTimer, waitTimer].forEach(function (t) { if (t) clearTimeout(t); });
+    safetyTimer = idleTimer = minTimer = holdTimer = waitTimer = null;
   }
   function reallyHide() {
     active = false;
     holding = false;
     sawBusy = false;
+    waiting = false;
+    waitFor = null;
+    stopWaitObserver();
     var el = document.getElementById("rve-switch-overlay");
     if (el) el.classList.remove("rve-visible");
     clearTimers();
   }
   // Arm the "hide after Shiny has been idle for IDLE_MS" timer, unless we're
-  // still holding for the recompute's first busy event.
+  // still holding for the recompute's first busy event, or still waiting for a
+  // named output to update.
   function armIdleHide() {
     if (!active) return;
     if (holding && !sawBusy) return;
+    if (waiting) return;
     if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(requestHide, IDLE_MS);
   }
@@ -125,8 +157,24 @@
     active = true;
     sawBusy = false;
     holding = !!(msg && msg.hold);
+    waitFor = (msg && msg.waitFor) || null;
+    stopWaitObserver();
+    waiting = !!waitFor;
     el.classList.add("rve-visible");
     safetyTimer = setTimeout(reallyHide, SAFETY_MS);
+    if (waiting) {
+      var target = document.getElementById(waitFor);
+      if (target && window.MutationObserver) {
+        waitInitialText = (target.textContent || "").trim();   // the pre-switch text
+        waitObserver = new MutationObserver(maybeReady);
+        waitObserver.observe(target, { childList: true, subtree: true, characterData: true });
+      } else {
+        waiting = false;  // can't observe -> don't block the hide
+      }
+      // Fallback: if the awaited element never changes, stop waiting so the
+      // overlay can still idle-hide rather than lingering to SAFETY_MS.
+      waitTimer = setTimeout(function () { waiting = false; stopWaitObserver(); armIdleHide(); }, WAIT_MS);
+    }
     // Fallback: if the expected recompute never fires a busy (e.g. the user
     // re-picked the same site so nothing changes), stop holding after HOLD_MS so
     // the overlay can still idle-hide instead of lingering until SAFETY_MS.
@@ -142,7 +190,17 @@
     if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
   });
   $(document).on("shiny:idle", armIdleHide);
-  $(document).on("shiny:error", function () { if (active) requestHide(); });
+  // Backup to the MutationObserver: the awaited output re-rendered.
+  $(document).on("shiny:value", function (e) {
+    if (!active || !waiting || !waitFor) return;
+    var id = (e && (e.name || (e.target && e.target.id)));
+    if (id === waitFor) maybeReady();
+  });
+  // A recompute that errors still reaches shiny:idle, so let the gated idle-hide
+  // handle it. Do NOT force-hide here: outputs routinely emit transient
+  // shiny:error events (validate() needs, stale-data guards) DURING a switch,
+  // and force-hiding on those dropped the mask before the new content rendered.
+  $(document).on("shiny:error", function () { if (active) armIdleHide(); });
   $(document).on("shiny:disconnected", reallyHide);
 
   Shiny.addCustomMessageHandler("rveSwitchOverlayShow", show);

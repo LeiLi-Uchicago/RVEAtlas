@@ -99,7 +99,7 @@ ui <- navbarPage(
         #rve-switch-overlay .rve-eyes { animation: none; }
       }
     ")),
-    tags$script(src = "switch-overlay.js"),
+    tags$script(src = "switch-overlay.js?v=7"),
     # Auto-recover the 3D structure viewers from WebGL context loss. A lost
     # context (heavy surface rebuilds / GPU pressure) blanks the r3dmol canvas
     # with no server error and previously needed a full page refresh. We catch
@@ -1227,6 +1227,13 @@ ui <- navbarPage(
         line-height: 1.02;
         letter-spacing: 0;
       }
+      .home-hero-pathogen {
+        color: #e67e22;
+      }
+      .home-current-subtype {
+        color: var(--rve-blue);
+        font-weight: 700;
+      }
       .home-hero .lead {
         max-width: 840px;
         margin: 18px 0 0;
@@ -1475,11 +1482,7 @@ ui <- navbarPage(
                      ),
                      div(
                        span(class = "home-kicker", "Respiratory Virus Evolution Atlas"),
-                       h1("Explore Respiratory Virus Evolution"),
-                       p(
-                         class = "lead",
-                         "RVEAtlas brings together interactive Shiny explorers for scanning amino acid variation, clade dynamics, and lineage patterns across respiratory virus datasets."
-                       ),
+                       uiOutput("home_hero_intro"),
                        div(class = "home-feature-grid",
                            div(class = "home-feature-card",
                                h4(icon("chart-bar"), "Single Site"),

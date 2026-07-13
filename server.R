@@ -208,6 +208,29 @@ server <- function(input, output, session) {
     img(src = src, alt = "RVEAtlas selected pathogen welcome banner")
   })
 
+  # Hero title + lead, made pathogen-aware so the Home page always names the
+  # dataset (and subtype) the user currently has selected.
+  output$home_hero_intro <- renderUI({
+    pathogen <- active_pathogen()
+    label <- PATHOGEN_ADAPTERS[[pathogen]]$label %||% pathogen
+    choices <- pathogen_subtype_choices(pathogen)
+    sub_val <- scalar_input(input$global_subtype)
+    sub_name <- if (length(choices) > 0) names(choices)[match(sub_val, unname(choices))] else NA_character_
+    if (length(sub_name) == 0 || is.na(sub_name) || !nzchar(sub_name)) sub_name <- sub_val
+    subtype_txt <- if (!is.null(sub_name) && nzchar(sub_name)) {
+      sprintf(" (subtype <span class='home-current-subtype'>%s</span>)", htmltools::htmlEscape(sub_name))
+    } else ""
+    tagList(
+      h1(HTML(sprintf("Explore <span class='home-hero-pathogen'>%s</span> Evolution",
+                      htmltools::htmlEscape(label)))),
+      p(class = "lead",
+        HTML(sprintf(paste0("You are currently exploring <strong>%s</strong>%s. RVEAtlas provides ",
+                            "interactive explorers for amino-acid variation, clade dynamics, and lineage ",
+                            "patterns across respiratory virus datasets."),
+                     htmltools::htmlEscape(label), subtype_txt)))
+    )
+  })
+
   output$app_info_markdown <- renderUI({
     pathogen_path <- paste0("APP_INFO_", pathogen_asset_id(), ".md")
     platform_path <- "APP_INFO_PLATFORM.md"
@@ -252,16 +275,18 @@ server <- function(input, output, session) {
     app_ready_for_context_waiter(TRUE)
   }, once = TRUE)
 
-  show_switch_overlay <- function(title, subtitle, pathogen = NULL, hold = FALSE) {
+  show_switch_overlay <- function(title, subtitle, pathogen = NULL, hold = FALSE, wait_for = NULL) {
     # Custom overlay (see ui.R) — independent of `waiter` so it can't collide with
     # the per-output withWaiter instances. The server only SHOWS it; the client
     # hides it on Shiny's `shiny:idle` (when recomputation finishes), plus a safety
     # auto-hide. This avoids relying on a server 'hide' message that would need a
     # later flush to be delivered (which previously left the mask stuck). `pathogen`
-    # selects the cartoon virus shown (FLU/RSV/COVID/CHIKV).
+    # selects the cartoon virus shown (FLU/RSV/COVID/CHIKV). `wait_for` names an
+    # output id whose update must land before the overlay is allowed to hide, so
+    # the mask stays up until that content (e.g. the Home pathogen text) refreshes.
     session$sendCustomMessage("rveSwitchOverlayShow", list(
       title = title, subtitle = subtitle, pathogen = pathogen %||% "FLU",
-      hold = isTRUE(hold)
+      hold = isTRUE(hold), waitFor = wait_for %||% ""
     ))
   }
 
@@ -273,7 +298,10 @@ server <- function(input, output, session) {
     show_switch_overlay(
       sprintf("Switching to %s…", label),
       "Loading pathogen data. Please wait.",
-      pathogen = pathogen
+      pathogen = pathogen,
+      # Keep the mask up until the Home hero text has refreshed to the new
+      # pathogen (it updates a flush later than shiny:idle would fire).
+      wait_for = "home_hero_intro"
     )
   }, ignoreInit = TRUE, priority = 200)
 
