@@ -13,8 +13,16 @@
   var MIN_MS  = 600;   // keep the indicator on screen at least this long
   var IDLE_MS = 350;   // hide this long after Shiny stops recomputing
   var SAFETY_MS = 15000;
+  var HOLD_MS = 1600;  // "hold" mode: wait up to this long for the busy that a
+                       // debounced recompute triggers before allowing idle-hide
   var active = false, shownAt = 0;
-  var safetyTimer = null, idleTimer = null, minTimer = null;
+  var safetyTimer = null, idleTimer = null, minTimer = null, holdTimer = null;
+  // In "hold" mode the overlay is shown BEFORE the server work starts (e.g. the
+  // single-site position change, which is debounced ~800ms). We must not let the
+  // idle that follows the mere input flush hide the overlay before that work
+  // begins, so we suppress idle-hide until we've seen the recompute's shiny:busy
+  // (or HOLD_MS elapses as a fallback for a no-op change).
+  var holding = false, sawBusy = false;
 
   // Per-pathogen palette + spike style for the cartoon. Soft, friendly pastels
   // (COVID is a warm coral rather than an alarming red) so the loading screen
@@ -83,14 +91,24 @@
   }
 
   function clearTimers() {
-    [safetyTimer, idleTimer, minTimer].forEach(function (t) { if (t) clearTimeout(t); });
-    safetyTimer = idleTimer = minTimer = null;
+    [safetyTimer, idleTimer, minTimer, holdTimer].forEach(function (t) { if (t) clearTimeout(t); });
+    safetyTimer = idleTimer = minTimer = holdTimer = null;
   }
   function reallyHide() {
     active = false;
+    holding = false;
+    sawBusy = false;
     var el = document.getElementById("rve-switch-overlay");
     if (el) el.classList.remove("rve-visible");
     clearTimers();
+  }
+  // Arm the "hide after Shiny has been idle for IDLE_MS" timer, unless we're
+  // still holding for the recompute's first busy event.
+  function armIdleHide() {
+    if (!active) return;
+    if (holding && !sawBusy) return;
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(requestHide, IDLE_MS);
   }
   function requestHide() {
     if (!active) return;
@@ -105,19 +123,25 @@
     clearTimers();
     shownAt = Date.now();
     active = true;
+    sawBusy = false;
+    holding = !!(msg && msg.hold);
     el.classList.add("rve-visible");
     safetyTimer = setTimeout(reallyHide, SAFETY_MS);
+    // Fallback: if the expected recompute never fires a busy (e.g. the user
+    // re-picked the same site so nothing changes), stop holding after HOLD_MS so
+    // the overlay can still idle-hide instead of lingering until SAFETY_MS.
+    if (holding) holdTimer = setTimeout(function () { holding = false; armIdleHide(); }, HOLD_MS);
   }
 
   // Stay up through the whole busy period (busy cancels a pending hide), then
   // hide once Shiny has been idle for IDLE_MS. No server 'hide' message needed,
   // so it can't get stuck waiting on a flush that never comes.
-  $(document).on("shiny:busy", function () { if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; } });
-  $(document).on("shiny:idle", function () {
-    if (!active) return;
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(requestHide, IDLE_MS);
+  $(document).on("shiny:busy", function () {
+    sawBusy = true;                                  // the recompute we held for
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
   });
+  $(document).on("shiny:idle", armIdleHide);
   $(document).on("shiny:error", function () { if (active) requestHide(); });
   $(document).on("shiny:disconnected", reallyHide);
 

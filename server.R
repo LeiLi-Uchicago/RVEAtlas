@@ -246,7 +246,7 @@ server <- function(input, output, session) {
     app_ready_for_context_waiter(TRUE)
   }, once = TRUE)
 
-  show_switch_overlay <- function(title, subtitle, pathogen = NULL) {
+  show_switch_overlay <- function(title, subtitle, pathogen = NULL, hold = FALSE) {
     # Custom overlay (see ui.R) — independent of `waiter` so it can't collide with
     # the per-output withWaiter instances. The server only SHOWS it; the client
     # hides it on Shiny's `shiny:idle` (when recomputation finishes), plus a safety
@@ -254,7 +254,8 @@ server <- function(input, output, session) {
     # later flush to be delivered (which previously left the mask stuck). `pathogen`
     # selects the cartoon virus shown (FLU/RSV/COVID/CHIKV).
     session$sendCustomMessage("rveSwitchOverlayShow", list(
-      title = title, subtitle = subtitle, pathogen = pathogen %||% "FLU"
+      title = title, subtitle = subtitle, pathogen = pathogen %||% "FLU",
+      hold = isTRUE(hold)
     ))
   }
 
@@ -1930,6 +1931,34 @@ server <- function(input, output, session) {
   # It acts as a buffer, allowing us to show a waiter during calculation.
   sp_data_val <- reactiveVal()
   pending_sp_position_jump <- reactiveVal(NULL)
+
+  # --- SINGLE SITE: instant transition overlay on site change ---
+  # Fire the switch overlay the moment the user picks a new gene/position, so
+  # there's immediate feedback instead of an ~800ms void while sp_position is
+  # debounced. `hold = TRUE` keeps the overlay up across that debounce gap (see
+  # switch-overlay.js) until the recompute AND all downstream renders (plot,
+  # table, structure) finish and Shiny goes idle. Only fires on the Single Site
+  # tab and only on a genuine change (not the first settle, tab entry, or a
+  # no-op re-emit of the same value).
+  sp_overlay_prev_gene <- reactiveVal(NULL)
+  sp_overlay_prev_pos  <- reactiveVal(NULL)
+  observeEvent(list(input$sp_gene, input$sp_position), {
+    if (!isTRUE(app_ready_for_context_waiter())) return(invisible(NULL))
+    gene <- input$sp_gene
+    pos  <- input$sp_position
+    prev_gene <- sp_overlay_prev_gene(); sp_overlay_prev_gene(gene)
+    prev_pos  <- sp_overlay_prev_pos();  sp_overlay_prev_pos(pos)
+    if (!identical(input$main_nav, "single_position")) return(invisible(NULL))
+    if (is.null(prev_gene) && is.null(prev_pos)) return(invisible(NULL))       # first settle
+    if (identical(gene, prev_gene) && identical(pos, prev_pos)) return(invisible(NULL))
+    if (is.null(pos) || !nzchar(pos)) return(invisible(NULL))                  # mid programmatic update
+    show_switch_overlay(
+      "Loading site…",
+      "Fetching and rendering the selected position.",
+      pathogen = active_pathogen(),
+      hold = TRUE
+    )
+  }, ignoreInit = TRUE, priority = 100)
   sp_position_debounced <- debounce(reactive(input$sp_position), 800)
 
   sp_position_choices <- reactive({
@@ -2166,17 +2195,22 @@ server <- function(input, output, session) {
     
     req(subtype, gene, pos, group_col, var_type)
 
-    show_sp_waiter <- identical(input$main_nav, "single_position")
-    if (isTRUE(show_sp_waiter)) {
-      waiter_show(
-        html = tagList(
-          spin_fading_circles(),
-          tags$h3("Loading Data...", style = "color:white; margin-top: 20px;"),
-          tags$p("Please wait while we fetch and process the records.", style = "color:white;")
-        ),
-        color = "rgba(44, 62, 80, 0.9)"
+    # Show the transition overlay while this (potentially heavy) recompute runs,
+    # but only when the user is actually on the Single Site tab (this observer
+    # also runs in the background to keep sp_data warm on other tabs). The overlay
+    # self-hides on Shiny idle once the plot/table/structure have all rendered, so
+    # it covers the FULL load — not just this data step. `hold` is FALSE here: we
+    # are already inside the busy recompute, so idle-hide can arm normally. A raw
+    # gene/position observer above shows it earlier (hold = TRUE) for instant
+    # feedback across the position debounce; re-showing here simply re-arms it.
+    show_sp_overlay <- isTRUE(app_ready_for_context_waiter()) &&
+      identical(input$main_nav, "single_position")
+    if (isTRUE(show_sp_overlay)) {
+      show_switch_overlay(
+        "Loading site…",
+        "Fetching and rendering the selected position.",
+        pathogen = active_pathogen()
       )
-      on.exit(waiter_hide(), add = TRUE)
     }
 
     if (usage_duckdb_available()) {
