@@ -51,7 +51,7 @@ conservation_entropy_from_counts <- function(counts) {
     probabilities <- probabilities[is.finite(probabilities) & probabilities > 0]
     data.frame(
       Position = position_counts$Position[[1]],
-      Entropy = if (length(probabilities) == 0) 0 else -sum(probabilities * log2(probabilities)),
+      Entropy = if (length(probabilities) == 0) 0 else abs(-sum(probabilities * log2(probabilities))),
       Pos_Total = total
     )
   })
@@ -129,12 +129,18 @@ conservation_cache_lookup <- function(cache, subtype, variation_type, gene, basi
     result <- result[!is.na(result$Entropy_Balanced), , drop = FALSE]
     if (nrow(result) == 0) return(NULL)
     names(result) <- c("Position", "Entropy", "Pos_Total")
+    # Shannon entropy is always >= 0; abs() maps floating-point negative zero
+    # (from fully-conserved sites, where -sum(1*log2(1)) == -0) back to +0 so it
+    # never displays as "-0.0", including for caches built before this guard.
+    result$Entropy <- abs(result$Entropy)
     return(result)
   }
 
   result <- sub[, c("Position", "Entropy", "Pos_Total"), drop = FALSE]
   result <- result[!is.na(result$Entropy), , drop = FALSE]
-  if (nrow(result) == 0) NULL else result
+  if (nrow(result) == 0) return(NULL)
+  result$Entropy <- abs(result$Entropy)
+  result
 }
 
 conservation_cache_path <- function(pathogen_id) {

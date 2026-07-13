@@ -1273,7 +1273,7 @@ usage_entropy_data <- function(subtype, var_type, gene, group_by, clade = "All")
     mutate(Pos_Total = sum(AA_Sum), p = AA_Sum / Pos_Total) %>%
     filter(p > 0) %>%
     summarise(
-      Entropy = -sum(p * log2(p)),
+      Entropy = abs(-sum(p * log2(p))),
       Pos_Total = first(Pos_Total),
       .groups = "drop"
     )
@@ -2228,7 +2228,7 @@ adapter_entropy_data <- function(subtype, var_type, gene, group_by, clade = "All
     mutate(Pos_Total = sum(.data$AA_Sum), p = .data$AA_Sum / .data$Pos_Total) %>%
     filter(.data$p > 0) %>%
     summarise(
-      Entropy = -sum(.data$p * log2(.data$p)),
+      Entropy = abs(-sum(.data$p * log2(.data$p))),
       Pos_Total = first(.data$Pos_Total),
       .groups = "drop"
     )
@@ -2387,7 +2387,7 @@ usage_year_balanced_entropy <- function(subtype, var_type, gene) {
     dplyr::mutate(p_bal = .data$wp_sum / .data$W_Total) %>%
     dplyr::group_by(.data$Position) %>%
     dplyr::summarise(
-      Entropy = -sum(ifelse(.data$p_bal > 0, .data$p_bal * log2(.data$p_bal), 0)),
+      Entropy = abs(-sum(ifelse(.data$p_bal > 0, .data$p_bal * log2(.data$p_bal), 0))),
       Pos_Total = dplyr::first(.data$Pos_Total),
       N_Years = dplyr::first(.data$N_Years),
       .groups = "drop"

@@ -3466,7 +3466,7 @@ server <- function(input, output, session) {
         ) %>%
         filter(p > 0) %>%
         summarise(
-          Entropy = -sum(p * log2(p)),
+          Entropy = abs(-sum(p * log2(p))),
           Pos_Total = first(Pos_Total),
           .groups = "drop"
         )
