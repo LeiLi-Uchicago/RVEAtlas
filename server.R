@@ -180,6 +180,12 @@ server <- function(input, output, session) {
     prev <- gs_last_pathogen()
     gs_last_pathogen(cur)
     if (!identical(prev, cur)) return(invisible(NULL))  # pathogen switch -> Home (handled elsewhere)
+    # Default the Dataset Insights "Filter Subtype" to the newly selected subtype
+    # (the user can still switch it to any other subtype afterward).
+    choices <- pathogen_subtype_choices(cur)
+    sel <- scalar_input(input$global_subtype)
+    if (length(choices) > 0 && !(sel %in% unname(choices))) sel <- unname(choices)[[1]]
+    updateSelectInput(session, "clade_plot_subtype", choices = choices, selected = sel)
     updateTabsetPanel(session, "main_nav", selected = "dataset_insights")
   }, ignoreInit = TRUE)
 
@@ -1895,6 +1901,34 @@ server <- function(input, output, session) {
       my_colors["Unknown"] <- "#d3d3d3"
     }
     
+    # Highlight the COVID-19 pandemic window (WHO: pandemic declared Mar 2020,
+    # public-health emergency ended May 2023) as a translucent band + label.
+    # Both x-axes are categorical (plotly maps categories to 0-based indices), so
+    # position the band by the index range of the in-window categories.
+    axis_cats <- if (identical(time_col, "YearMonth")) year_month_levels else sort(unique(as.character(summary_df$plot_time)))
+    yr <- suppressWarnings(as.integer(substr(axis_cats, 1, 4)))
+    if (identical(time_col, "YearMonth")) {
+      mo <- suppressWarnings(as.integer(sub("^[0-9]{4}-", "", axis_cats)))
+      key <- yr * 12L + ifelse(is.na(mo), 6L, mo)               # unknown month -> mid-year
+      in_pandemic <- !is.na(yr) & key >= (2020L * 12L + 3L) & key <= (2023L * 12L + 5L)
+    } else {
+      in_pandemic <- !is.na(yr) & yr >= 2020L & yr <= 2023L
+    }
+    pandemic_shapes <- list(); pandemic_annotations <- list()
+    pand_idx <- which(in_pandemic)
+    if (length(pand_idx) > 0) {
+      x0 <- (min(pand_idx) - 1L) - 0.5                          # left edge of first in-window bar
+      x1 <- (max(pand_idx) - 1L) + 0.5                          # right edge of last in-window bar
+      pandemic_shapes <- list(list(
+        type = "rect", xref = "x", yref = "paper", x0 = x0, x1 = x1, y0 = 0, y1 = 1,
+        fillcolor = "rgba(192,57,43,0.10)", line = list(width = 0), layer = "below"))
+      pandemic_annotations <- list(list(
+        x = (x0 + x1) / 2, xref = "x", y = 0.98, yref = "paper",
+        xanchor = "center", yanchor = "top", showarrow = FALSE,
+        text = "COVID-19 pandemic", font = list(family = "Arial", size = 11, color = "#c0392b"),
+        bgcolor = "rgba(255,255,255,0.55)", borderpad = 2))
+    }
+
     plot_ly(summary_df, x = ~plot_time, y = ~Count, color = ~fill_val, colors = my_colors,
             type = "bar", hoverinfo = "text",
             text = ~paste0(time_label, ": ", plot_time, "<br>", fill_col, ": ", fill_val, "<br>Count: ", scales::comma(Count)),
@@ -1904,7 +1938,9 @@ server <- function(input, output, session) {
              width = NULL,
              xaxis = xaxis_config,
              yaxis = list(title = "Sequence Count", tickformat = ","),
-             legend = list(title = list(text = ""))) %>%
+             legend = list(title = list(text = "")),
+             shapes = pandemic_shapes,
+             annotations = pandemic_annotations) %>%
       config(displayModeBar = FALSE) %>%
       htmlwidgets::onRender("function(el, x) { setTimeout(function() { if (window.Plotly) Plotly.Plots.resize(el); }, 0); }")
   })

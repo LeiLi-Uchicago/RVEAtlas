@@ -317,7 +317,7 @@ ui <- navbarPage(
         margin-bottom: 18px;
       }
       .year-range-control {
-        max-width: 860px;
+        max-width: 100%;
       }
       .year-range-control .form-group {
         width: 100%;
@@ -1582,7 +1582,7 @@ ui <- navbarPage(
                column(3,
                       selectInput("clade_plot_time_scale", "X Axis:",
                                   choices = c("Year" = "Year", "Year-Month" = "YearMonth"),
-                                  selected = "Year",
+                                  selected = "YearMonth",
                                   selectize = FALSE)),
                column(12,
                       rve_card(
