@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta
       name="description"
-      content="Respiratory Virus Evolution Atlas connects interactive Shiny explorers and amino-acid analysis pipelines for COVID, RSV, human influenza, and Nextclade3-supported pathogens."
+      content="Respiratory Virus Evolution Atlas is one unified interactive Shiny app, with amino-acid analysis pipelines, for exploring COVID, RSV, human influenza, and Nextclade3-supported pathogens."
     >
     <title>Respiratory Virus Evolution Atlas</title>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
@@ -35,9 +35,9 @@
         <div class="hero-copy">
           <h1 id="hero-title">Respiratory Virus Evolution Atlas</h1>
           <p>
-            Pathogen-specific Shiny apps and reproducible pipelines for tracking
+            One unified Shiny app and reproducible pipelines for tracking
             amino acid variation, clade evolution, and lineage patterns across respiratory viruses and
-            Nextclade3-supported pathogens.
+            Nextclade3-supported pathogens &mdash; switch pathogens from a single interface.
           </p>
           <div class="hero-affiliation">
             <img src="assets/StJude.jpeg" alt="">
@@ -45,11 +45,11 @@
           </div>
           <div class="hero-actions" aria-label="Featured project links">
             <div class="hero-action-row">
-              <span class="hero-action-label">Explorers:</span>
-              <a class="button teal" href="#explorers">RSV Explorer</a>
-              <a class="button coral" href="#explorers">COVID Explorer</a>
-              <a class="button violet" href="#explorers">FLU Explorer</a>
-              <a class="button blue" href="#explorers">AAExplorer</a>
+              <span class="hero-action-label">Explore by pathogen:</span>
+              <a class="button teal" href="#explorers">RSV</a>
+              <a class="button coral" href="#explorers">COVID</a>
+              <a class="button violet" href="#explorers">Influenza</a>
+              <a class="button blue" href="#explorers">CHIKV</a>
             </div>
             <div class="hero-action-row">
               <span class="hero-action-label">Pipelines:</span>
@@ -129,7 +129,7 @@
       <section class="section split-section" id="explorers" aria-labelledby="explorers-title">
         <div class="section-heading">
           <h2 id="explorers-title">Explore Amino Acid Variation</h2>
-          <p>Public Shiny applications for scanning clade-aware amino acid changes across respiratory virus datasets and other Nextclade3-supported pathogens.</p>
+          <p>One public Shiny application for scanning clade-aware amino acid changes across respiratory virus datasets and other Nextclade3-supported pathogens &mdash; pick a pathogen from the same interface.</p>
         </div>
         <div class="explorer-groups">
           <div class="explorer-group">
@@ -146,7 +146,7 @@
                     <path d="M18 24h12M24 18v12"></path>
                   </svg>
                 </div>
-                <h3>RSV Explorer</h3>
+                <h3>RSV</h3>
                 <p>Visualize amino acid variation across RSV clades and lineages.</p>
                 <p class="data-source">Data source: <a href="https://nextstrain.org/rsv/a/genome/6y" target="_blank" rel="noopener noreferrer">Nextstrain</a></p>
                 <dl class="explorer-stats" aria-label="RSV dataset summary">
@@ -156,7 +156,7 @@
                   </div>
                   <div>
                     <dt>Countries Represented</dt>
-                    <dd>91</dd>
+                    <dd>92</dd>
                   </div>
                   <div>
                     <dt>Time Span</dt>
@@ -168,7 +168,7 @@
                   <li>Mutation patterns over time</li>
                   <li>Sequence and metadata filters</li>
                 </ul>
-                <div class="card-actions" aria-label="RSV Explorer launch options">
+                <div class="card-actions" aria-label="RSV launch options">
                   <a class="icon-link" href="https://leilistjude.shinyapps.io/RVEAtlas/?pathogen=RSV" target="_blank" rel="noopener noreferrer">
                     <img class="action-link-icon" src="assets/public-user-icon.svg" alt="" aria-hidden="true">
                     <span>Public user</span>
@@ -192,7 +192,7 @@
                     <path d="M16 24c3-5 13-5 16 0c-3 5-13 5-16 0Z"></path>
                   </svg>
                 </div>
-                <h3>COVID Explorer</h3>
+                <h3>COVID</h3>
                 <p>Track amino acid changes across SARS-CoV-2 clades.</p>
                 <p class="data-source">Data source: <a href="https://nextstrain.org/ncov/open/global/6m" target="_blank" rel="noopener noreferrer">Nextstrain</a></p>
                 <dl class="explorer-stats" aria-label="COVID dataset summary">
@@ -214,7 +214,7 @@
                   <li>Variant summaries by position</li>
                   <li>Lineage and temporal views</li>
                 </ul>
-                <div class="card-actions" aria-label="COVID Explorer launch options">
+                <div class="card-actions" aria-label="COVID launch options">
                   <a class="icon-link" href="https://leilistjude.shinyapps.io/RVEAtlas/?pathogen=COVID" target="_blank" rel="noopener noreferrer">
                     <img class="action-link-icon" src="assets/public-user-icon.svg" alt="" aria-hidden="true">
                     <span>Public user</span>
@@ -238,17 +238,17 @@
                     <path d="M24 8v5M24 35v5M8 24h5M35 24h5M13 13l3.5 3.5M31.5 31.5L35 35M35 13l-3.5 3.5M16.5 31.5L13 35"></path>
                   </svg>
                 </div>
-                <h3>FLU Explorer</h3>
+                <h3>Influenza</h3>
                 <p>Explore amino acid variation in human influenza viruses.</p>
                 <p class="data-source">Data source: <a href="https://gisaid.org/" target="_blank" rel="noopener noreferrer">GISAID</a></p>
                 <dl class="explorer-stats" aria-label="FLU dataset summary">
                   <div>
                     <dt>Total Sequences</dt>
-                    <dd>565,521</dd>
+                    <dd>622,939</dd>
                   </div>
                   <div>
                     <dt>Countries Represented</dt>
-                    <dd>212</dd>
+                    <dd>228</dd>
                   </div>
                   <div>
                     <dt>Time Span</dt>
@@ -260,7 +260,7 @@
                   <li>Subtype and clade comparisons</li>
                   <li>Research-ready visual summaries</li>
                 </ul>
-                <div class="card-actions" aria-label="FLU Explorer launch options">
+                <div class="card-actions" aria-label="Influenza launch options">
                   <a class="icon-link" href="https://leilistjude.shinyapps.io/RVEAtlas/?pathogen=FLU" target="_blank" rel="noopener noreferrer">
                     <img class="action-link-icon" src="assets/public-user-icon.svg" alt="" aria-hidden="true">
                     <span>Public user</span>
@@ -280,7 +280,7 @@
 
           <div class="explorer-group universal-group">
             <div class="group-heading">
-              <h3>Universal Explorer</h3>
+              <h3>Universal mode applicable to other pathogens</h3>
               <p>A flexible viewer for NextAA outputs from any supported Nextstrain dataset.</p>
             </div>
             <div class="card-grid universal-grid">
@@ -292,21 +292,21 @@
                     <path d="M15 16c3 2 6 3 9 3s6-1 9-3M15 32c3-2 6-3 9-3s6 1 9 3"></path>
                   </svg>
                 </div>
-                <h3>AAExplorer</h3>
-                <p>Universal Explorer for NextAA outputs from any Nextstrain dataset supported by Nextclade3. Current data: Chikungunya virus.</p>
+                <h3>CHIKV</h3>
+                <p>Universal Exploreriation for NextAA outputs from any Nextstrain dataset supported by Nextclade3. Current data: Chikungunya virus.</p>
                 <p class="data-source">Data source: <a href="https://nextstrain.org/chikv/global" target="_blank" rel="noopener noreferrer">Nextstrain</a></p>
                 <dl class="explorer-stats" aria-label="CHIKV dataset summary">
                   <div>
                     <dt>Total Sequences</dt>
-                    <dd>8,842</dd>
+                    <dd>8,871</dd>
                   </div>
                   <div>
                     <dt>Countries Represented</dt>
-                    <dd>108</dd>
+                    <dd>109</dd>
                   </div>
                   <div>
                     <dt>Time Span</dt>
-                    <dd>1952 - 2025</dd>
+                    <dd>1952 - 2026</dd>
                   </div>
                 </dl>
                 <ul>
@@ -338,12 +338,12 @@
         <div class="agent-layout">
           <div class="agent-copy">
             <span class="agent-kicker">Featured AI Setup Skill</span>
-            <h2 id="agent-title">Install RVE Atlas Apps With an AI Agent</h2>
+            <h2 id="agent-title">Install RVE Atlas With an AI Agent</h2>
             <p>
-              The RVEAtlas Skill helps AI coding agents install and run COVIDExplorer, RSVExplorer,
-              FLUExplorer, and AAExplorer locally. It can preview the setup with a dry run, download
-              app code and release data, install missing R packages, and launch the selected Shiny app
-              in a browser.
+              The RVEAtlas Skill helps AI coding agents install and run RVE Atlas locally &mdash; one
+              app covering COVID, RSV, human influenza, and other pathogens (e.g. CHIKV) under a universal configuration. It can preview
+              the setup with a dry run, download the app code and release data, install missing R
+              packages, and launch the app in a browser.
             </p>
             <div class="agent-actions">
               <a class="button agent-light" href="https://github.com/LeiLi-Uchicago/RVEAtlas_Skill" target="_blank" rel="noopener noreferrer">View RVEAtlas Skill</a>
@@ -354,12 +354,12 @@
             <div class="agent-mark" aria-hidden="true">AI</div>
             <h3>Ask your coding agent</h3>
             <p class="agent-prompt">
-              Use the RVEAtlas skill to install and run RSVExplorer locally. Install it into ~/RVEAtlasApps. Start with a dry run, then do the real install if the dry run looks correct.
+              Use the RVEAtlas skill to install and run RVE Atlas locally. Install it into ~/RVEAtlas. Start with a dry run, then do the real install if the dry run looks correct.
             </p>
             <ul>
               <li>Supports macOS and Linux</li>
               <li>Uses R 4.0+, Git, and Python 3</li>
-              <li>Installs one selected Shiny app at a time</li>
+              <li>One app &mdash; all pathogens included</li>
             </ul>
           </div>
         </div>
@@ -374,7 +374,7 @@
           <article class="pipeline-card accent-amber">
             <div>
               <h3>NextAA Pipeline</h3>
-              <p>Processes Nextstrain data for Nextclade3-supported pathogens into standardized amino acid variation outputs for AAExplorer and pathogen-specific explorers.</p>
+              <p>Processes Nextstrain data for Nextclade3-supported pathogens into standardized amino acid variation outputs for RVE Atlas (its universal and pathogen-specific views).</p>
             </div>
             <ol>
               <li>Download from Nextstrain</li>
@@ -388,7 +388,7 @@
           <article class="pipeline-card accent-purple">
             <div>
               <h3>FLUAA Pipeline</h3>
-              <p>Processes GISAID human influenza data into amino acid variation summaries for the FLU Explorer.</p>
+              <p>Processes GISAID human influenza data into amino acid variation summaries for the influenza view in RVEAtlas.</p>
             </div>
             <ol>
               <li>Download from GISAID</li>
@@ -412,7 +412,7 @@
             <div class="workflow-line"></div>
             <div class="workflow-node pipeline">NextAA</div>
             <div class="workflow-line"></div>
-            <div class="workflow-node explorer">RSV, COVID &amp; universal AAExplorer</div>
+            <div class="workflow-node explorer">RVEAtlas &middot; RSV, COVID &amp; CHIKV</div>
             <div class="workflow-line"></div>
             <div class="workflow-node insight">Research Context</div>
           </div>
@@ -421,7 +421,7 @@
             <div class="workflow-line"></div>
             <div class="workflow-node pipeline">FLUAA</div>
             <div class="workflow-line"></div>
-            <div class="workflow-node explorer">FLU Explorer</div>
+            <div class="workflow-node explorer">RVEAtlas &middot; Influenza</div>
             <div class="workflow-line"></div>
             <div class="workflow-node insight">Research Context</div>
           </div>
@@ -432,7 +432,7 @@
         <div>
           <h2 id="about-title">Built for Pathogen Evolution Research</h2>
           <p>
-            RVE Atlas brings together public visualization apps and processing pipelines so researchers can move
+            RVE Atlas brings together one public visualization app and processing pipelines so researchers can move
             quickly from clade context to amino acid variation patterns across COVID, RSV, human influenza,
             and Nextstrain pathogens supported by Nextclade3.
           </p>
