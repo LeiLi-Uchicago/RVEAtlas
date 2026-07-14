@@ -49,6 +49,28 @@ a {
   text-decoration: none;
 }
 
+/* Keyboard skip link: off-screen until focused, then slides in. */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 800;
+  transform: translateY(-180%);
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
 img,
 svg {
   display: block;
@@ -549,18 +571,12 @@ svg {
   letter-spacing: 0;
 }
 
-#explorers-title {
-  white-space: nowrap;
-}
-
 #explorers .section-heading {
   max-width: none;
 }
 
 #explorers .section-heading p {
-  max-width: calc(100vw - clamp(40px, 8vw, 144px));
-  font-size: clamp(14px, 1.35vw, 16px);
-  white-space: nowrap;
+  max-width: 860px;
 }
 
 .section-heading p,
@@ -1197,7 +1213,6 @@ svg {
 
   #explorers .section-heading p {
     max-width: 100%;
-    white-space: normal;
   }
 
   .workflow-row {
@@ -1227,10 +1242,6 @@ svg {
 @media (max-width: 680px) {
   body {
     padding-bottom: 176px;
-  }
-
-  #explorers-title {
-    white-space: normal;
   }
 
   .site-nav {
