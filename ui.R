@@ -304,6 +304,40 @@ ui <- navbarPage(
         padding-top: 22px;
         padding-bottom: 28px;
       }
+      /* Footer bar: copyright centered, memory monitor parked on the right. In
+         normal flow (not position:fixed) so neither can cover page content. */
+      .rve-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        width: 100%;
+        margin-top: 30px;
+        padding: 12px 18px;
+        border-top: 1px solid #e7e7e7;
+        background-color: #f8f9fa;
+        color: #6c757d;
+      }
+      .rve-footer-copy {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+      .rve-mem-widget {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 30px;
+        background-color: #ffffff;
+        font-size: 13px;
+      }
+      @media (max-width: 760px) {
+        .rve-footer { justify-content: center; }
+        .rve-footer-copy { flex: 1 1 100%; }
+      }
       .control-panel,
       .well {
         background: var(--rve-surface);
@@ -557,7 +591,47 @@ ui <- navbarPage(
       .navbar-pathogen-switch .btn-default:hover:not(.active) {
         background-color: #e9ecef !important;
       }
-      @media (max-width: 1240px) {
+      /* Between the stacked layout (<=1240px) and roughly 1660px the nav, brand
+         and pathogen switch compete for one row: the 7 links need ~861px
+         (including gaps/margins) but only ~736px is free at 1440px, so the nav
+         wrapped and the navbar grew 86px -> 140px with a lone orphaned link.
+         Tighten the link metrics just in that band -- wide screens keep the
+         roomier sizing below. */
+      @media (max-width: 1660px) {
+        /* Reclaim the row's fixed overhead first (container column-gap 18px x2
+           plus the switch's 12px margin) before shrinking any text further. */
+        .navbar .container-fluid { column-gap: 10px; }
+        /* Note: bslib's `.nav-underline .nav-link` forces padding:0 on these
+           links, so the only separation between items is gap + item margin --
+           don't reclaim width from those or the labels run together. Take it
+           from the font size instead. */
+        .navbar-nav { gap: 6px; }
+        .navbar-nav .nav-item { margin-left: 1px; margin-right: 1px; }
+        .navbar .container-fluid > .navbar-nav > li > a { font-size: 15px; }
+        /* The pathogen switch is the single biggest consumer of the row (~479px);
+           trimming it here buys back more than squeezing the link text again. */
+        .navbar-pathogen-switch { gap: 8px; margin-right: 0 !important; }
+        .navbar-pathogen-switch .btn-group-container-sw { gap: 7px; }
+        .switch-label { font-size: 12.5px; letter-spacing: 0.5px; }
+        .navbar-pathogen-switch .bootstrap-select .btn {
+          min-width: 118px;
+          font-size: 16px;
+          padding: 8px 13px;
+        }
+        .navbar-pathogen-switch > .form-group:nth-of-type(2) {
+          width: 96px !important;
+          flex: 0 1 96px;
+        }
+        .navbar-pathogen-switch > .form-group:nth-of-type(2) .bootstrap-select .btn {
+          min-width: 96px;
+        }
+      }
+      /* Below ~1410px the brand + 7 links + switch can no longer share one row
+         even tightened, so fall back to the intentional stacked layout (nav
+         centered on its own row) rather than letting the links wrap raggedly
+         with an orphan. Above it, the band rules above keep everything on one
+         row down to ~1420px. */
+      @media (max-width: 1410px) {
         .navbar .container-fluid { align-items: center; }
         .navbar .container-fluid > .navbar-nav {
           order: 3;
@@ -1349,24 +1423,91 @@ ui <- navbarPage(
       }
     ")),
     tags$script(HTML("
-      window.resizeDatasetBreakdownPlot = function() {
+      /* Plotly sizes its SVG once at render and never re-fits itself, so a
+         window resize leaves every chart at its old width -- dead space inside
+         the card when widening, overflow past the viewport when narrowing.
+         Re-fit every visible plot; hidden tabs are skipped (a plot in a
+         display:none pane measures 0 and would re-render collapsed) and instead
+         re-fit on tab show. */
+      window.rveResizePlots = function(root) {
         if (!window.Plotly) return;
-        var ids = ['stats_time_plot', 'stats_geo_plot', 'stats_clade_plot'];
-        var resizeAll = function() {
-          ids.forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el && el.querySelector('.plotly')) Plotly.Plots.resize(el);
-          });
-        };
+        var scope = root || document;
+        scope.querySelectorAll('.js-plotly-plot').forEach(function(el) {
+          if (el.offsetParent === null) return;              // hidden tab pane
+          if (!el.clientWidth) return;
+          try { Plotly.Plots.resize(el); } catch (e) {}
+        });
+      };
+      window.resizeDatasetBreakdownPlot = function() {
+        // Kept for the server-triggered path; now just re-fits whatever is
+        // visible rather than a hard-coded id list.
         setTimeout(function() {
-          resizeAll();
+          window.rveResizePlots();
           window.dispatchEvent(new Event('resize'));
         }, 80);
-        setTimeout(resizeAll, 350);
+        setTimeout(function() { window.rveResizePlots(); }, 350);
       };
       Shiny.addCustomMessageHandler('resize_dataset_breakdown_plot', function(message) {
         window.resizeDatasetBreakdownPlot();
       });
+      // Re-fit triggers, in order of reliability: a debounced window resize
+      // (the case users hit), tab-show, and -- as an extra net -- a
+      // ResizeObserver per plot, which also catches container changes that are
+      // not window resizes (the 1200px .cons-struct-split reflow, a card
+      // growing). The observer is debounced and guarded on an actual width
+      // change so Plotly's own resize cannot feed back into it.
+      (function() {
+        // Primary, and the case users actually hit: re-fit after a window resize.
+        // Debounced so a drag re-fits once on settle rather than every frame.
+        var wt = null;
+        window.addEventListener('resize', function() {
+          if (wt) clearTimeout(wt);
+          wt = setTimeout(function() { window.rveResizePlots(); }, 160);
+        });
+        // A plot rendered while its tab was hidden measures 0 and is skipped, so
+        // give it its first correct fit when the tab becomes visible.
+        $(document).on('shown.bs.tab', function() {
+          setTimeout(function() { window.rveResizePlots(); }, 60);
+        });
+        if (!window.ResizeObserver) return;
+        var timers = new WeakMap();
+        var lastW = new WeakMap();
+        var ro = new ResizeObserver(function(entries) {
+          entries.forEach(function(entry) {
+            var el = entry.target;
+            var w = Math.round(el.clientWidth);
+            if (!w) return;                       // hidden pane
+            if (lastW.get(el) === w) return;      // no real change
+            lastW.set(el, w);
+            if (timers.get(el)) clearTimeout(timers.get(el));
+            timers.set(el, setTimeout(function() {
+              if (window.Plotly && el.clientWidth) {
+                try { Plotly.Plots.resize(el); } catch (e) {}
+              }
+            }, 120));
+          });
+        });
+        var observed = new WeakSet();
+        var attach = function() {
+          document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
+            if (observed.has(el)) return;
+            observed.add(el);
+            ro.observe(el);
+          });
+        };
+        // This script is inside tags$head, so document.body does not exist yet
+        // and observing it here would throw and abort the whole block.
+        var start = function() {
+          attach();
+          // Plots are (re)created by Shiny after render, so pick up new nodes.
+          new MutationObserver(attach).observe(document.body, { childList: true, subtree: true });
+        };
+        if (document.body) {
+          start();
+        } else {
+          document.addEventListener('DOMContentLoaded', start);
+        }
+      })();
       window.mountNavbarPathogenSwitch = function() {
         var switchEl = document.querySelector('.navbar-pathogen-switch');
         var navInner = document.querySelector('.navbar .container-fluid');
@@ -1455,21 +1596,26 @@ ui <- navbarPage(
     )
   ),
   
+  # The memory monitor lives inside the footer bar rather than as a positional
+  # argument to navbarPage: every unnamed argument there becomes a nav item, so
+  # this widget used to render an empty 0-width <li> in the navbar that still
+  # consumed gap and margin. In the footer it sits in normal page flow, so it can
+  # no longer overlay content the way the old position:fixed pill did.
   footer = tags$footer(
-    style = "text-align: center; padding: 15px; background-color: #f8f9fa; border-top: 1px solid #e7e7e7; color: #6c757d; margin-top: 30px; width: 100%;",
-    HTML(paste0("&copy; ", format(Sys.Date(), "%Y"), "Center for Applied Bioinformatics | St. Jude Research. All rights reserved."))
+    class = "rve-footer",
+    tags$span(
+      class = "rve-footer-copy",
+      HTML(paste0("&copy; ", format(Sys.Date(), "%Y"), "Center for Applied Bioinformatics | St. Jude Research. All rights reserved."))
+    ),
+    tags$div(
+      class = "rve-mem-widget",
+      tags$strong(icon("memory"), "RAM:"),
+      textOutput("mem_usage", inline = TRUE),
+      actionButton("free_mem", "Clear Cache", icon = icon("broom"), class = "btn-xs btn-danger", style = "border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: bold;")
+    )
   ),
   
   # ---------------------------------------------------------
-  # MEMORY MONITOR & CONTROL WIDGET
-  # ---------------------------------------------------------
-  tags$div(
-    style = "position: fixed; bottom: 15px; left: 15px; z-index: 9999; background-color: rgba(255,255,255,0.95); padding: 6px 15px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); font-size: 13px; display: flex; align-items: center; gap: 12px; border: 1px solid #dee2e6;",
-    tags$strong(icon("memory"), "RAM:"),
-    textOutput("mem_usage", inline = TRUE),
-    actionButton("free_mem", "Clear Cache", icon = icon("broom"), class = "btn-xs btn-danger", style = "border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: bold;")
-  ),
-  
   # ---------------------------------------------------------
   # TAB 0: HOME
   # ---------------------------------------------------------
@@ -1851,6 +1997,38 @@ ui <- navbarPage(
                                          min-height: 22px;
                                          margin-top: 6px;
                                        }
+                                       /* Trigger for the entropy popover.
+                                          cursor:pointer (not help) because it
+                                          opens on click. 18px + padding keeps a
+                                          comfortable hit area -- a 15px badge is
+                                          an easy target to miss. */
+                                       .sp-entropy-help {
+                                         display: inline-grid;
+                                         place-items: center;
+                                         width: 18px;
+                                         height: 18px;
+                                         border-radius: 50%;
+                                         background: #dfe6ec;
+                                         color: #3d5162;
+                                         font-weight: 700;
+                                         font-size: 11px;
+                                         line-height: 1;
+                                         cursor: pointer;
+                                         user-select: none;
+                                       }
+                                       .sp-entropy-help:hover,
+                                       .sp-entropy-help:focus-visible {
+                                         background: #004b87;
+                                         color: #ffffff;
+                                         outline: none;
+                                       }
+                                       .popover { max-width: 340px; }
+                                       .popover-body p {
+                                         margin: 0 0 8px;
+                                         font-size: 13px;
+                                         line-height: 1.5;
+                                       }
+                                       .popover-body p:last-child { margin-bottom: 0; }
                                        .sp-epitope-info {
                                          margin-top: 10px;
                                          padding: 8px;

@@ -1681,19 +1681,16 @@ server <- function(input, output, session) {
     available_cols[[1]]
   }
 
+  # Re-fit visible plotly charts after a server-side change that alters their
+  # container width. Delegates to window.rveResizePlots (see ui.R), which also
+  # backs the window-resize and tab-show handlers, so there's a single
+  # implementation rather than a hard-coded plot-id list here.
   resize_dataset_breakdown_plot <- function() {
     shinyjs::runjs("
       (function() {
-        var ids = ['stats_time_plot', 'stats_geo_plot', 'stats_clade_plot'];
-        var resizeAll = function() {
-          if (!window.Plotly) return;
-          ids.forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el && el.querySelector('.plotly')) Plotly.Plots.resize(el);
-          });
-        };
-        setTimeout(function() { resizeAll(); window.dispatchEvent(new Event('resize')); }, 100);
-        setTimeout(resizeAll, 450);
+        if (!window.rveResizePlots) return;
+        setTimeout(function() { window.rveResizePlots(); window.dispatchEvent(new Event('resize')); }, 100);
+        setTimeout(function() { window.rveResizePlots(); }, 450);
       })();
     ")
   }
@@ -2182,21 +2179,70 @@ server <- function(input, output, session) {
       "year-balanced"
     }
     h5nx_na <- is_h5nx_na_gene(input$global_subtype, input$sp_gene)
+    # Compact one-line legend: the colour ramp stays visible (it's what the chips
+    # in the dropdown mean), while the explanatory prose moves into a popover.
+    # Inline, this paragraph made the Precise Access column ~380px tall and
+    # dragged the whole control card with it, leaving 150-200px of dead space
+    # under every neighbouring column.
+    #
+    # bslib::popover (not a `title` attribute): the "?" reads as clickable, and a
+    # native title tooltip is hover-only with a ~1s delay, so clicking it did
+    # nothing. bslib registers the popover itself, which matters here because
+    # renderUI rebuilds this element whenever the basis/gene changes.
+    entropy_help <- tagList(
+      tags$p(
+        HTML(paste0(
+          "The colored chip after each position is its <b>Shannon entropy</b> ",
+          "(site conservation, <b>", basis_txt, "</b>",
+          if (h5nx_na) "" else " &mdash; set on the Conservation page", "):"
+        ))
+      ),
+      tags$p(
+        HTML(paste0(
+          '<span style="background:#2c7bb6;color:#fff;padding:0 5px;border-radius:3px;">conserved</span>',
+          ' &rarr; ',
+          '<span style="background:#ffffbf;color:#1a1a1a;padding:0 5px;border-radius:3px;">mid</span>',
+          ' &rarr; ',
+          '<span style="background:#d7191c;color:#fff;padding:0 5px;border-radius:3px;">variable</span>'
+        ))
+      ),
+      tags$p(
+        HTML(paste0(
+          "Positions with fewer than <b>", ENTROPY_MIN_SEQS, "</b> sequences are not scored. ",
+          "Colored tags name the epitope / annotation groups at that site."
+        ))
+      )
+    )
     tagList(
-      div(style = "font-size: 0.78em; color: #666; margin-top: 6px; line-height: 1.6;",
+      div(style = paste("font-size: 0.78em; color: #666; margin-top: 6px; line-height: 1.6;",
+                        "display: flex; align-items: center; gap: 5px; flex-wrap: wrap;"),
           HTML(paste0(
-            'The colored chip after each position is its <b>Shannon entropy</b> ',
-            '(site conservation, <b>', basis_txt, '</b>',
-            if (h5nx_na) '' else ' — set on the Conservation page',
-            '): ',
+            '<b>Entropy</b>: ',
             '<span style="background:#2c7bb6;color:#fff;padding:0 5px;border-radius:3px;">conserved</span>',
             ' &rarr; ',
             '<span style="background:#ffffbf;color:#1a1a1a;padding:0 5px;border-radius:3px;">mid</span>',
             ' &rarr; ',
-            '<span style="background:#d7191c;color:#fff;padding:0 5px;border-radius:3px;">variable</span>',
-            '. Positions with fewer than ', ENTROPY_MIN_SEQS, ' sequences are not scored. ',
-            'Colored tags name the epitope / annotation groups at that site.'
-          ))),
+            '<span style="background:#d7191c;color:#fff;padding:0 5px;border-radius:3px;">variable</span>'
+          )),
+          bslib::popover(
+            tags$span(
+              class = "sp-entropy-help",
+              role = "button",
+              tabindex = "0",
+              `aria-label` = "About the entropy chips",
+              "?"
+            ),
+            entropy_help,
+            title = "Entropy chips",
+            placement = "top",
+            # bslib hardcodes trigger "click" for non-hyperlink triggers, but it
+            # spreads user options over its defaults, so this wins. "hover" opens
+            # it on mouse-over, "focus" keeps it reachable by keyboard, and
+            # "click" keeps the tap/click that already worked (and is the only
+            # way in on touch devices, which have no hover).
+            options = list(trigger = "click hover focus")
+          )
+      ),
       if (h5nx_na) div(
         style = paste("font-size: 0.78em; margin-top: 8px; padding: 8px 10px;",
                       "background:#fff8e1; border-left:3px solid #f0ad4e; border-radius:4px; color:#6b5900;"),
