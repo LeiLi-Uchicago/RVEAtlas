@@ -203,9 +203,92 @@ server <- function(input, output, session) {
     if (pathogen %in% c("FLU", "RSV", "COVID", "CHIKV")) pathogen else "CHIKV"
   })
 
-  output$home_welcome_banner <- renderUI({
-    src <- paste0("welcome_banner_", pathogen_asset_id(), ".png")
-    img(src = src, alt = "RVEAtlas selected pathogen welcome banner")
+  # --- HOME PATHOGEN CHOOSER ---
+  # Presents every dataset as an equal entry point, grouped by configuration tier
+  # (see PATHOGEN_TIERS in global.R). Cards are built from PATHOGEN_ADAPTERS, so a
+  # newly added pathogen appears here automatically -- in the "universal" category
+  # unless its adapter declares tier = "specific".
+  home_pathogen_card <- function(pathogen_id, is_active) {
+    cfg <- PATHOGEN_ADAPTERS[[pathogen_id]]
+    available <- pathogen_cache_available(pathogen_id)
+    subtypes <- names(cfg$subtype_choices %||% character(0))
+    # Keep the card honest about breadth without letting a long influenza list
+    # dominate the layout.
+    shown <- utils::head(subtypes, 4)
+    more <- length(subtypes) - length(shown)
+    label <- cfg$label %||% pathogen_id
+
+    div(
+      class = paste(
+        "home-pathogen-card",
+        if (isTRUE(is_active)) "is-active",
+        if (!available) "is-unavailable"
+      ),
+      # A disabled card must not emit a selection event.
+      onclick = if (available && !isTRUE(is_active)) {
+        sprintf("Shiny.setInputValue('home_pathogen_pick', '%s', {priority: 'event'});", pathogen_id)
+      } else NULL,
+      role = if (available) "button" else NULL,
+      tabindex = if (available && !isTRUE(is_active)) "0" else NULL,
+      `aria-pressed` = if (available) tolower(as.character(isTRUE(is_active))) else NULL,
+      div(
+        class = "home-pathogen-media",
+        # *_card.jpg, not the full-size welcome_banner_*.png: the originals are
+        # 2.3-10MB each (~29MB for all four) and showing every pathogen at once
+        # would download the lot on every Home visit. These are 1200px-wide
+        # variants (~1.1MB total) -- ample for a card this size.
+        # Loaded eagerly, not lazily: these cards are Home's primary content, so
+        # deferring them would only delay the thing the page is for. Cheap enough
+        # to do so at ~1.1MB for all four combined.
+        tags$img(
+          src = sprintf("welcome_banner_%s_card.jpg", pathogen_id),
+          alt = sprintf("%s dataset artwork", label)
+        ),
+        if (isTRUE(is_active)) span(class = "home-pathogen-badge", "Viewing")
+        else if (!available) span(class = "home-pathogen-badge is-muted", "Unavailable")
+      ),
+      div(
+        class = "home-pathogen-body",
+        span(class = "home-pathogen-name", label),
+        p(class = "home-pathogen-desc", cfg$description %||% ""),
+        if (length(shown) > 0) div(
+          class = "home-pathogen-subtypes",
+          lapply(shown, function(s) span(class = "home-pathogen-chip", s)),
+          if (more > 0) span(class = "home-pathogen-chip is-more", sprintf("+%d more", more))
+        )
+      )
+    )
+  }
+
+  output$home_pathogen_chooser <- renderUI({
+    current <- active_pathogen()
+    sections <- lapply(PATHOGEN_TIERS, function(tier) {
+      ids <- pathogen_ids_in_tier(tier$id)
+      if (length(ids) == 0) return(NULL)   # drop an empty category entirely
+      div(
+        class = paste0("home-pathogen-tier home-pathogen-tier-", tier$id),
+        div(
+          class = "home-pathogen-tier-head",
+          h3(tier$title),
+          p(tier$blurb)
+        ),
+        div(
+          class = "home-pathogen-grid",
+          lapply(ids, function(id) home_pathogen_card(id, identical(id, current)))
+        )
+      )
+    })
+    div(class = "home-pathogen-chooser", sections)
+  })
+
+  # Card click -> drive the existing navbar picker, so the whole established
+  # cascade (subtype reset, switch overlay, tab handling) runs unchanged.
+  observeEvent(input$home_pathogen_pick, {
+    pick <- scalar_input(input$home_pathogen_pick)
+    req(pick, pick %in% names(PATHOGEN_ADAPTERS))
+    if (identical(pick, active_pathogen())) return(invisible(NULL))
+    if (!pathogen_cache_available(pick)) return(invisible(NULL))
+    updatePickerInput(session, "active_pathogen", selected = pick)
   })
 
   # Hero title + lead, made pathogen-aware so the Home page always names the

@@ -1353,21 +1353,12 @@ ui <- navbarPage(
         gap: 26px;
         margin-top: 28px;
       }
-      .home-banner-panel,
       .home-about-panel {
         border: 1px solid var(--rve-border);
         border-radius: 16px;
         background: var(--rve-surface);
         box-shadow: var(--rve-shadow-soft);
         overflow: hidden;
-      }
-      .home-banner-panel {
-        padding: 16px;
-      }
-      .home-banner-panel img {
-        display: block;
-        width: 100%;
-        border-radius: 12px;
       }
       .home-about-panel {
         display: flex;
@@ -1406,6 +1397,176 @@ ui <- navbarPage(
         text-decoration: none;
         outline: none;
       }
+      /* ---- Home pathogen chooser ------------------------------------------ */
+      .home-pathogen-chooser {
+        margin-top: 26px;
+      }
+      .home-pathogen-tier + .home-pathogen-tier {
+        margin-top: 26px;
+        padding-top: 24px;
+        border-top: 1px solid var(--rve-border);
+      }
+      .home-pathogen-tier-head h3 {
+        margin: 0;
+        color: var(--rve-navy);
+        font-size: 19px;
+        font-weight: 850;
+      }
+      .home-pathogen-tier-head p {
+        margin: 5px 0 0;
+        color: var(--rve-muted);
+        font-size: 14px;
+      }
+      .home-pathogen-grid {
+        display: grid;
+        /* Fixed 2-up. Explicit columns (not auto-fit) so a category holding a
+           single card still gets a half-width card rather than stretching it
+           across the whole row. */
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 14px;
+      }
+      .home-pathogen-card {
+        display: flex;
+        flex-direction: column;
+        padding: 0;                 /* artwork runs edge to edge */
+        overflow: hidden;           /* clip artwork to the rounded corners */
+        border: 1px solid var(--rve-border);
+        border-radius: 14px;
+        background: var(--rve-surface);
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      }
+      .home-pathogen-media {
+        position: relative;
+        aspect-ratio: 2 / 1;        /* matches the source art (2:1 and 1.83:1) */
+        overflow: hidden;
+        background: var(--rve-surface-soft);
+      }
+      .home-pathogen-media img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.25s ease;
+      }
+      .home-pathogen-card:hover .home-pathogen-media img {
+        transform: scale(1.03);
+      }
+      .home-pathogen-card.is-active:hover .home-pathogen-media img {
+        transform: none;            /* active card is a state, not a target */
+      }
+      .home-pathogen-body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 8px;
+        padding: 14px 18px 16px;
+      }
+      .home-pathogen-card:hover,
+      .home-pathogen-card:focus-visible {
+        border-color: var(--rve-blue);
+        box-shadow: 0 8px 20px rgba(16, 32, 51, 0.10);
+        transform: translateY(-2px);
+        outline: none;
+      }
+      /* The active card is a state, not a target: no hover lift, no pointer.
+         Marked with a thick border plus an outer ring so which dataset you are
+         viewing is obvious at a glance across the whole grid. border-box sizing
+         keeps the 3px border from resizing the card relative to its siblings. */
+      .home-pathogen-card.is-active {
+        box-sizing: border-box;
+        border: 3px solid var(--rve-blue);
+        background: #eef5fb;
+        box-shadow: 0 0 0 4px rgba(0, 75, 135, 0.16), 0 10px 26px rgba(16, 32, 51, 0.14);
+        cursor: default;
+        transform: none;
+      }
+      .home-pathogen-card.is-active .home-pathogen-media {
+        border-bottom: 1px solid rgba(0, 75, 135, 0.25);
+      }
+      .home-pathogen-card.is-unavailable {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .home-pathogen-card.is-unavailable:hover {
+        border-color: var(--rve-border);
+        box-shadow: none;
+        transform: none;
+      }
+      .home-pathogen-name {
+        color: var(--rve-blue);
+        font-size: 24px;
+        font-weight: 850;
+        line-height: 1.2;
+      }
+      /* Badge floats over the artwork; the shadow keeps it legible whatever the
+         image happens to be behind it. */
+      .home-pathogen-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 13px;
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        border-radius: 999px;
+        background: var(--rve-blue);
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 850;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        box-shadow: 0 3px 12px rgba(16, 32, 51, 0.45);
+      }
+      /* Filled dot before the Viewing label -- a second, non-colour cue for the
+         active card, so it does not rely on the blue alone. */
+      .home-pathogen-badge::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ffffff;
+        content: '';
+      }
+      .home-pathogen-badge.is-muted {
+        border-color: rgba(255, 255, 255, 0.75);
+      }
+      .home-pathogen-badge.is-muted::before {
+        display: none;
+      }
+      .home-pathogen-badge.is-muted {
+        background: #cbd5dd;
+        color: #44525f;
+      }
+      .home-pathogen-desc {
+        margin: 0;
+        color: var(--rve-muted);
+        font-size: 15.5px;
+        line-height: 1.5;
+      }
+      .home-pathogen-subtypes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: auto;
+        padding-top: 4px;
+      }
+      .home-pathogen-chip {
+        padding: 2px 9px;
+        border: 1px solid var(--rve-border);
+        border-radius: 5px;
+        background: var(--rve-surface-soft);
+        color: var(--rve-ink);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .home-pathogen-chip.is-more {
+        border-style: dashed;
+        color: var(--rve-muted);
+        font-weight: 600;
+      }
       @media (max-width: 980px) {
         .home-learn-page {
           width: 100%;
@@ -1418,6 +1579,10 @@ ui <- navbarPage(
           border-bottom: 1px solid var(--rve-border);
         }
         .home-feature-grid {
+          grid-template-columns: 1fr;
+        }
+        /* Two-up would leave the artwork too small to read on a phone. */
+        .home-pathogen-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -1645,14 +1810,19 @@ ui <- navbarPage(
                        )
                      )
                  ),
+                 # Neutral pathogen chooser: presents every dataset as an equal
+                 # entry point rather than implying the platform is influenza-first.
+                 # It selects rather than gates -- a pathogen is always active, so
+                 # every other tab works immediately.
+                 uiOutput("home_pathogen_chooser"),
+                 # The old welcome-banner panel lived here. It showed the active
+                 # pathogen's full-size artwork, which the chooser cards above now
+                 # cover -- and it pulled a 2.3-10MB PNG on every Home visit.
                  div(class = "home-showcase",
-                     div(class = "home-banner-panel",
-                         uiOutput("home_welcome_banner")
-                     ),
                      div(class = "home-about-panel",
                          h3("Designed for Pathogen Evolution Research"),
                          p(
-                           "Use the global pathogen and subtype controls in the navigation bar to switch datasets, then move through dataset insights, conservation views, single-site exploration, and pairwise comparisons."
+                           "Pick a pathogen above, or use the pathogen and subtype controls in the navigation bar, then move through dataset insights, conservation views, single-site exploration, and pairwise comparisons."
                          ),
                          p(
                            "Developed by the Center for Applied Bioinformatics at St. Jude Children's Research Hospital."

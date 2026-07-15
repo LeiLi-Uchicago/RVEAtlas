@@ -1339,12 +1339,16 @@ PATHOGEN_ADAPTERS <- list(
     id = "FLU",
     label = "Influenza",
     schema = "flu",
+    tier = "specific",
+    description = "Human and avian influenza, with HA/NA numbering and curated antigenic-site annotation.",
     subtype_choices = stats::setNames(sort_flu_subtypes(unique(c(metadata_groups, SUBTYPES))), sort_flu_subtypes(unique(c(metadata_groups, SUBTYPES))))
   ),
   RSV = list(
     id = "RSV",
     label = "RSV",
     schema = "standard",
+    tier = "specific",
+    description = "Respiratory syncytial virus, with F-protein structure and antigenic-site mapping.",
     duckdb = file.path("data", "cache", "RSV", "rsv_explorer.duckdb"),
     metadata = file.path("data", "cache", "RSV", "metadata_global.rds"),
     subtype_choices = c("A" = "RSV:A", "B" = "RSV:B"),
@@ -1354,6 +1358,8 @@ PATHOGEN_ADAPTERS <- list(
     id = "COVID",
     label = "COVID",
     schema = "covid",
+    tier = "specific",
+    description = "SARS-CoV-2 lineages, with spike structure and epitope annotation.",
     duckdb = file.path("data", "cache", "COVID", "covid_explorer.duckdb"),
     metadata = file.path("data", "cache", "COVID", "metadata_summary.rds"),
     subtype_choices = c("SARS-CoV-2" = "COVID:SARS-CoV-2"),
@@ -1363,12 +1369,50 @@ PATHOGEN_ADAPTERS <- list(
     id = "CHIKV",
     label = "CHIKV",
     schema = "standard",
+    # No `tier`: falls back to "universal" (see pathogen_tier()).
+    description = "Chikungunya virus, explored through the shared clade-aware workflow.",
     duckdb = file.path("data", "cache", "CHIKV", "aa_explorer.duckdb"),
     metadata = file.path("data", "cache", "CHIKV", "metadata_global.rds"),
     subtype_choices = c("CHIKV" = "CHIKV:CHIKV"),
     default_grouping = "Clade"
   )
 )
+
+# ---------------------------------------------------------------------------
+# Presentation tiers for the Home pathogen chooser.
+#
+# "specific"  - datasets carrying pathogen-specific configuration: curated
+#               structure/epitope annotation (epitopes_h1/h3/h5/na_*, rsv_f,
+#               cov_s under www/structures) and bespoke groupings.
+# "universal" - datasets served entirely by the shared/universal configuration,
+#               with no pathogen-specific curation yet.
+#
+# A pathogen with no `tier` is treated as "universal", so a newly added adapter
+# lands in the general category automatically and only needs an explicit
+# tier = "specific" once it gains curated configuration.
+# ---------------------------------------------------------------------------
+PATHOGEN_TIERS <- list(
+  list(
+    id = "specific",
+    title = "Pathogen-specific configuration",
+    blurb = "Curated structure, numbering and antigenic-site annotation tailored to each pathogen."
+  ),
+  list(
+    id = "universal",
+    title = "Pathogens with universal configuration",
+    blurb = "Served by the shared clade-aware workflow, without pathogen-specific curation."
+  )
+)
+
+pathogen_tier <- function(pathogen_id) {
+  tier <- PATHOGEN_ADAPTERS[[as.character(pathogen_id)]]$tier
+  if (is.null(tier) || !nzchar(tier)) "universal" else as.character(tier)
+}
+
+pathogen_ids_in_tier <- function(tier_id) {
+  ids <- names(PATHOGEN_ADAPTERS)
+  ids[vapply(ids, function(i) identical(pathogen_tier(i), tier_id), logical(1))]
+}
 
 ADAPTER_DISPLAY_GROUP_LIMITS <- c(Nextclade_pango = 100L)
 
