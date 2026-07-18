@@ -1,9 +1,11 @@
 pathogen	subtype	gene	pdb_id	structure_file	region_chains	resi_from_numbering	epitope_file	title	label
-FLU	H1N1	HA	4JTV	4JTV_trimer.pdb	HA1:A,C,E;HA2:B,D,F	TRUE	epitopes_h1.tsv	H1N1 HA trimer - A/California/04/2009 (PDB 4JTV, biological assembly 1)	4JTV - A/California/04/2009
+FLU	H1N1	HA	4JTV	4JTV_trimer.pdb	HA1:A,C,E;HA2:B,D,F	TRUE	epitopes_h1.tsv	H1N1pdm09 HA trimer - A/California/04/2009 (PDB 4JTV, biological assembly 1; H1 numbering aligned to 4JTV)	4JTV - A/California/04/2009 (pdm09)
 FLU	H3N2	HA	4HMG	4HMG_trimer.pdb	HA1:A,C,E;HA2:B,D,F	TRUE	epitopes_h3.tsv	H3N2 HA trimer - A/Aichi/2/1968 (PDB 4HMG, biological assembly 1)	4HMG - A/Aichi/2/1968
 FLU	H5NX	HA	2FK0	2FK0_trimer.pdb	HA1:A,C,E;HA2:B,D,F	TRUE	epitopes_h5.tsv	H5 HA trimer - A/Vietnam/1203/2004 (PDB 2FK0, biological assembly 1; renumbered to app H5 numbering)	2FK0 - A/Vietnam/1203/2004 (clade 1)
 FLU	H5NX	HA	9NRR	9NRR_trimer.pdb	HA1:A,C,E;HA2:B,D,F	TRUE	epitopes_h5.tsv	H5 HA trimer - A/duck/France/161108h/2016 (PDB 9NRR, biological assembly 1; clade 2.3.4.4b; renumbered to app H5 numbering)	9NRR - A/duck/France/2016 (clade 2.3.4.4b)
 FLU	H1N1	NA	3NSS	3NSS_tetramer.pdb	NA:A,B,C,D	FALSE	epitopes_na_n1.tsv	N1 NA tetramer - A/California/04/2009 (PDB 3NSS, biological assembly 1; renumbered to app N1 numbering)	3NSS - A/California/04/2009 (N1)
+FLU	H1N1seasonal	HA	6WCR	6WCR_trimer.pdb	HA1:A,C,E;HA2:B,D,F	TRUE	epitopes_h1.tsv	Seasonal H1 HA trimer - A/Puerto Rico/8/1934 (PDB 6WCR, biological assembly; renumbered to app H1 numbering; H1N1seasonal numbering aligned to 6WCR)	6WCR - A/Puerto Rico/8/1934 (seasonal H1)
+FLU	H1N1seasonal	NA	3NSS	3NSS_tetramer.pdb	NA:A,B,C,D	FALSE	epitopes_na_n1.tsv	N1 NA tetramer - A/California/04/2009 (PDB 3NSS, biological assembly 1; renumbered to app N1 numbering)	3NSS - A/California/04/2009 (N1)
 FLU	H3N2	NA	4GZO	4GZO_tetramer.pdb	NA:A,B,C,D	FALSE	epitopes_na_n2.tsv	N2 NA tetramer - A/Tanzania/205/2010 (PDB 4GZO, biological assembly 1; renumbered to app N2 numbering)	4GZO - A/Tanzania/205/2010 (N2)
 RSV	RSV:A	F	3RKI	3RKI_trimer.pdb	F:A,B,C	FALSE	epitopes_rsv_f.tsv	RSV postfusion F trimer (PDB 3RKI, biological assembly 1; renumbered to app F numbering). The postfusion fold is conserved across subgroups. Fusion peptide (137-) is disordered here.	Postfusion F - 3RKI
 RSV	RSV:B	F	3RKI	3RKI_trimer.pdb	F:A,B,C	FALSE	epitopes_rsv_f.tsv	RSV postfusion F trimer (PDB 3RKI, biological assembly 1; renumbered to app F numbering). The postfusion fold is conserved across subgroups. Fusion peptide (137-) is disordered here.	Postfusion F - 3RKI

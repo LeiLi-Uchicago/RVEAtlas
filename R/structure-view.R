@@ -14,6 +14,43 @@
 # Other pathogens/genes slot in by adding rows to structure_config.tsv.
 # =============================================================================
 
+# ---- Config-key aliasing ---------------------------------------------------
+
+# Some app subtypes are lineage splits of a parent and reuse SOME of the parent's
+# curated resources. H1N1 was split into H1N1pdm09 (the 2009 pandemic lineage) and
+# H1N1seasonal (pre-2009 seasonal H1N1). Both share the parent's H1 antigenic-site
+# and gene-region tables (keyed "H1N1"), but each is displayed on and numbered
+# against its OWN structure: H1N1pdm09 on 4JTV (A/California/04/2009), H1N1seasonal
+# on 6WCR (A/Puerto Rico/8/1934). The H1 numbering FRAME is common (so sites are
+# comparable and epitopes transfer), but the app-position -> H1-position mapping is
+# per lineage because their consensus alignments differ.
+#
+# Resolution is "raw-first, else parent": a config lookup uses the subtype's own
+# rows when present, otherwise the parent below. So H1N1seasonal picks up its own
+# structure_config + HA-numbering rows (6WCR), while epitope / gene-region lookups
+# (no seasonal rows) fall back to the shared "H1N1" tables. H1N1pdm09 has no rows
+# of its own anywhere and always resolves to "H1N1" (4JTV).
+#
+# Defined here because structure-view.R resolves subtype-keyed config and is
+# sourced before the rest of the app, so global.R and server.R can call it too;
+# it is also self-contained for unit tests that source this file standalone.
+FLU_CONFIG_SUBTYPE_ALIASES <- c(
+  H1N1pdm09    = "H1N1",
+  H1N1seasonal = "H1N1"
+)
+
+# `available` = the subtypes that actually have rows in the config being queried.
+# When given, the raw subtype wins if it is present; otherwise fall back to its
+# parent alias. When NULL, always use the parent alias (legacy behavior).
+flu_config_subtype <- function(subtype, available = NULL) {
+  subtype <- as.character(subtype)
+  if (length(subtype) == 0) return(subtype)
+  parent <- unname(FLU_CONFIG_SUBTYPE_ALIASES[subtype])
+  parent <- ifelse(is.na(parent), subtype, parent)
+  if (is.null(available)) return(parent)
+  ifelse(subtype %in% as.character(available), subtype, parent)
+}
+
 # ---- Locations -------------------------------------------------------------
 
 # read.delim with comment.char = "#" would also strip in-field values that
@@ -72,6 +109,7 @@ sv_load_structure_config <- function(dir = sv_structure_dir()) {
 sv_get_structure_config <- function(subtype, gene, config = sv_load_structure_config(),
                                      pdb_id = NULL) {
   if (is.null(subtype) || is.null(gene) || nrow(config) == 0) return(NULL)
+  subtype <- flu_config_subtype(subtype, unique(config$subtype))
   hit <- config[
     config$subtype == as.character(subtype) & config$gene == as.character(gene),
     , drop = FALSE
@@ -89,6 +127,7 @@ sv_get_structure_config <- function(subtype, gene, config = sv_load_structure_co
 sv_list_structures <- function(subtype, gene, config = sv_load_structure_config()) {
   empty <- data.frame(pdb_id = character(0), label = character(0), stringsAsFactors = FALSE)
   if (is.null(subtype) || is.null(gene) || nrow(config) == 0) return(empty)
+  subtype <- flu_config_subtype(subtype, unique(config$subtype))
   hit <- config[
     config$subtype == as.character(subtype) & config$gene == as.character(gene),
     , drop = FALSE
@@ -193,7 +232,10 @@ sv_load_numbering <- function(subtype = NULL, path = NULL) {
     Numbering_Position = suppressWarnings(as.numeric(m$Numbering_Position)),
     stringsAsFactors = FALSE
   )
-  if (!is.null(subtype)) out <- out[out$Subtype == as.character(subtype), , drop = FALSE]
+  if (!is.null(subtype)) {
+    subtype <- flu_config_subtype(subtype, unique(out$Subtype))
+    out <- out[out$Subtype == subtype, , drop = FALSE]
+  }
   out
 }
 
@@ -299,6 +341,7 @@ sv_load_epitopes <- function(config_row, subtype, gene, dir = sv_structure_dir()
   need <- c("subtype", "gene", "region", "site", "positions", "color")
   if (!all(need %in% names(df))) return(sv_empty_epitopes())
   has_group <- "group" %in% names(df)
+  subtype <- flu_config_subtype(subtype, unique(df$subtype))
   df <- df[df$subtype == as.character(subtype) & df$gene == as.character(gene), , drop = FALSE]
   if (nrow(df) == 0) return(sv_empty_epitopes())
   rows <- lapply(seq_len(nrow(df)), function(i) {
@@ -390,6 +433,7 @@ sv_gene_regions <- function(subtype, gene, dir = sv_structure_dir()) {
   df <- sv_read_tsv(path)
   need <- c("subtype", "gene", "region", "start", "end", "color")
   if (!all(need %in% names(df))) return(empty)
+  subtype <- flu_config_subtype(subtype, unique(df$subtype))
   df <- df[df$subtype == as.character(subtype) & df$gene == as.character(gene), , drop = FALSE]
   if (nrow(df) == 0) return(empty)
   df$start <- suppressWarnings(as.numeric(df$start))

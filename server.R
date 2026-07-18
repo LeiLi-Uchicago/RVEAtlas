@@ -1729,9 +1729,16 @@ server <- function(input, output, session) {
   dataset_breakdown_cols <- function(insights, time_col) {
     prefix <- paste0(time_col, "__")
     cols <- sub(paste0("^", prefix), "", grep(paste0("^", prefix), names(insights$breakdowns), value = TRUE))
+    group <- active_dataset_group(insights)
     # Pathogenicity (HPAI/LPAI) is only meaningful for H5NX; hide it for other subtypes.
-    if ("Pathogenicity" %in% cols && !identical(active_dataset_group(insights), "H5NX")) {
+    if ("Pathogenicity" %in% cols && !identical(group, "H5NX")) {
       cols <- setdiff(cols, "Pathogenicity")
+    }
+    # Pre-2009 seasonal H1N1 predates Nextclade HA/NA clade nomenclature, so every
+    # clade breakdown (HA Clade, NA Clade, short/legacy HA clade) is uninformative
+    # for it -- drop them from the Sub-Category options.
+    if (identical(group, "H1N1seasonal")) {
+      cols <- cols[!grepl("clade", cols, ignore.case = TRUE)]
     }
     cols
   }
@@ -1888,17 +1895,39 @@ server <- function(input, output, session) {
         filter(.data$Year >= year_range[1], .data$Year <= year_range[2])
     }
     validate(need(nrow(plot_data) > 0, "No records are available for the selected year range."))
-      
+
+    # Percentage view (default): each year's groups are normalised to 100% so the
+    # stacked bars show COMPOSITION over time; "count" shows raw sequence volume.
+    as_pct <- !identical(scalar_input(input$stats_time_mode) %||% "pct", "count")
+    plot_data <- plot_data %>%
+      group_by(.data$Year) %>%
+      mutate(YearTotal = sum(.data$Count, na.rm = TRUE),
+             Pct = dplyr::if_else(.data$YearTotal > 0, .data$Count / .data$YearTotal * 100, 0)) %>%
+      ungroup()
+    plot_data$Value <- if (as_pct) plot_data$Pct else plot_data$Count
+
     n_groups <- length(unique(plot_data$Group))
     my_colors <- setNames(viridis::viridis(n_groups, option = "turbo", begin = 0.1, end = 0.9), sort(unique(plot_data$Group)))
-    
-    plot_ly(plot_data, x = ~Year, y = ~Count, color = ~Group, colors = my_colors,
-            type = "bar", hoverinfo = "text",
-            text = ~paste0("Year: ", Year, "<br>Group: ", Group, "<br>Sequences: ", scales::comma(Count)),
+
+    hover_val <- if (as_pct) {
+      ~paste0("Year: ", Year, "<br>Group: ", Group,
+              "<br>Share: ", sprintf("%.1f%%", Pct),
+              "<br>Sequences: ", scales::comma(Count))
+    } else {
+      ~paste0("Year: ", Year, "<br>Group: ", Group, "<br>Sequences: ", scales::comma(Count))
+    }
+    yaxis_cfg <- if (as_pct) {
+      list(title = "Share of sequences (%)", ticksuffix = "%", range = list(0, 100))
+    } else {
+      list(title = "Sequence Count", tickformat = ",")
+    }
+
+    plot_ly(plot_data, x = ~Year, y = ~Value, color = ~Group, colors = my_colors,
+            type = "bar", hoverinfo = "text", text = hover_val,
             marker = list(line = list(color = 'white', width = 0.5))) %>%
       layout(barmode = 'stack',
              xaxis = list(title = "Year", tickangle = -45, tickfont = list(family = "Arial", size = 12), tickformat = "d"),
-             yaxis = list(title = "Sequence Count", tickformat = ","),
+             yaxis = yaxis_cfg,
              legend = list(orientation = 'h', x = 0.5, xanchor = 'center', y = -0.2),
              margin = list(b = 50)) %>%
       config(displayModeBar = FALSE)
@@ -2133,6 +2162,8 @@ server <- function(input, output, session) {
   # (app position already equals the structural/epitope position), so the key is
   # simply "<region>:<app position>" for whichever region(s) the epitope table uses.
   sp_epitope_struct_keys <- function(app_pos_num, subtype, gene, epi_regions) {
+    # H1N1seasonal has its own HA-numbering rows (6WCR); H1N1pdm09 falls back to "H1N1".
+    subtype <- flu_config_subtype(subtype, unique(HA_NUMBERING_LOOKUP$Subtype))
     if (identical(gene, "HA") && !is.null(HA_NUMBERING_LOOKUP) &&
         nrow(HA_NUMBERING_LOOKUP) > 0 && any(HA_NUMBERING_LOOKUP$Subtype == subtype)) {
       nm <- HA_NUMBERING_LOOKUP[HA_NUMBERING_LOOKUP$Subtype == subtype, , drop = FALSE]
@@ -3116,9 +3147,10 @@ server <- function(input, output, session) {
     if (is.na(pos)) return(NULL)
 
     # Convert app position to structural numbering for this subtype
+    # (H1N1seasonal uses its own 6WCR-aligned rows; H1N1pdm09 falls back to "H1N1").
     if (!exists("HA_NUMBERING_LOOKUP") || nrow(HA_NUMBERING_LOOKUP) == 0) return(NULL)
     hit <- HA_NUMBERING_LOOKUP[
-      HA_NUMBERING_LOOKUP$Subtype == input$global_subtype &
+      HA_NUMBERING_LOOKUP$Subtype == flu_config_subtype(input$global_subtype, unique(HA_NUMBERING_LOOKUP$Subtype)) &
         HA_NUMBERING_LOOKUP$Full_HA_Position == pos,
       ,
       drop = FALSE

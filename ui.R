@@ -1177,6 +1177,13 @@ ui <- navbarPage(
         width: 100% !important;
         max-width: 100% !important;
       }
+      /* Percentage/Count toggle sits top-right of the Seasonality card, above the plot. */
+      .stats-time-mode-toggle {
+        display: flex;
+        justify-content: flex-end;
+        margin: -4px 0 6px;
+      }
+      .stats-time-mode-toggle .form-group { margin-bottom: 0; }
       .info-markdown table {
         width: 100%;
         table-layout: fixed;
@@ -1876,6 +1883,16 @@ ui <- navbarPage(
                       rve_card(
                           title = "Sequencing Over Time (Seasonality)",
                           class = "analysis-panel dataset-breakdown-plot-wrap",
+                          div(class = "stats-time-mode-toggle",
+                              radioGroupButtons(
+                                inputId = "stats_time_mode",
+                                label = NULL,
+                                choices = c("Percentage" = "pct", "Count" = "count"),
+                                selected = "pct",
+                                size = "sm",
+                                status = "default"
+                              )
+                          ),
                           withWaiter(plotlyOutput("stats_time_plot", height = "400px", width = "100%"))
                       )
                ),

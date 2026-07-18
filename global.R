@@ -130,7 +130,9 @@ discover_flu_subtypes <- function(raw_dir = RAW_DATA_DIR) {
   if (length(detected) > 0) {
     sort_flu_subtypes(detected)
   } else {
-    c("H1N1", "H3N2", "B_VIC", "B_YAM")
+    # Fallback only when no raw folders are present (e.g. a cache-only deploy);
+    # mirrors the current data/raw/FLU layout.
+    c("H1N1pdm09", "H1N1seasonal", "H3N2", "H5NX", "B_VIC", "B_YAM")
   }
 }
 
@@ -384,7 +386,26 @@ empty_usage_duckdb_df <- function() {
   )
 }
 
+# The H1N1pdm09 / H1N1seasonal count CSVs tag their Protein column with the
+# lineage (e.g. "HA_pdm09", "NA_seasonal"), while every other subtype uses the
+# bare segment name ("HA", "NA"). The suffix is a labeling artifact of the split
+# pipeline -- the count folders are already named "HA"/"NA" -- and it would
+# otherwise leak into the gene dropdown and break every gene-keyed lookup
+# (structure config, HA numbering, epitopes, gene regions), which all expect the
+# canonical name. Strip it so genes are identical across subtypes. Idempotent on
+# already-canonical names, so it is a no-op if the raw data is later cleaned.
+canonical_flu_gene <- function(gene) {
+  sub("_(pdm09|seasonal)$", "", as.character(gene))
+}
+
 normalize_usage_table <- function(df, subtype, var_type, gene_name, group_name) {
+  # Header-only count CSVs are legitimate: a gene often has no rows for a given
+  # grouping (e.g. non-HA genes carry no HA_clade breakdown), and smaller
+  # subtypes like H1N1seasonal have many such files. Building the normalized
+  # data.frame from a 0-row df would recycle its scalar columns against
+  # zero-length ones ("differing number of rows: 0, 1"), so return the empty
+  # schema directly and let the caller append nothing.
+  if (is.null(df) || nrow(df) == 0) return(empty_usage_duckdb_df())
   df <- strip_validation_count_cols(df)
   df <- df %>%
     dplyr::rename_with(~ gsub("^Protein$", "Gene", .x), any_of("Protein")) %>%
@@ -396,6 +417,7 @@ normalize_usage_table <- function(df, subtype, var_type, gene_name, group_name) 
   }
 
   if (!"Gene" %in% names(df)) df$Gene <- gene_name
+  df$Gene <- canonical_flu_gene(df$Gene)
   if (!"AminoAcid" %in% names(df)) df$AminoAcid <- NA_character_
   if (!"Count" %in% names(df)) df$Count <- NA_real_
   if (!"Position" %in% names(df)) df$Position <- NA_real_
@@ -708,6 +730,10 @@ if (!cache_loaded) {
               strip_validation_count_cols() %>%
               dplyr::rename_with(~ gsub("^Protein$", "Gene", .x), any_of("Protein")) %>%
               mutate(Group = subtype)
+
+            # Canonicalize split-lineage gene tags ("HA_pdm09" -> "HA"); see
+            # canonical_flu_gene. Keeps this legacy path consistent with the duckdb one.
+            if ("Gene" %in% names(df)) df$Gene <- canonical_flu_gene(df$Gene)
 
             # Columns are read as character (so "NA" gene / mixed values aren't
             # mis-guessed); coerce the numeric columns the query path relies on.
@@ -1504,7 +1530,9 @@ ha_numbering_label <- function(subtype, gene, position, is_aa = TRUE) {
   empty <- rep("", length(position))
   if (!isTRUE(is_aa) || !identical(as.character(gene), "HA") || length(position) == 0) return(empty)
   if (!exists("HA_NUMBERING_LOOKUP") || nrow(HA_NUMBERING_LOOKUP) == 0) return(empty)
-  subtype <- as.character(subtype)
+  # Each split H1N1 lineage uses its own HA-numbering rows when present
+  # (H1N1seasonal), else falls back to the parent "H1N1" (H1N1pdm09).
+  subtype <- flu_config_subtype(subtype, unique(HA_NUMBERING_LOOKUP$Subtype))
   for (i in seq_along(position)) {
     if (is.na(position[[i]])) next
     hit <- HA_NUMBERING_LOOKUP[
