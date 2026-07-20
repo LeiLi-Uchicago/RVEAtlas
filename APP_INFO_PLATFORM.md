@@ -2,6 +2,10 @@
 
 Use this file for updates that apply to the unified RVEAtlas platform across all pathogens.
 
+### 2026-07-20
+- Separate H1N1pdm09 and H1N1seasonal
+- Improvement of UI.
+
 ### 2026-07-13
 
 - Data update. Fixed mis-alignment BUG for a few genes, especially in H5NX and RSV G. 
