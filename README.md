@@ -11,22 +11,27 @@ Project website: <https://leili-uchicago.github.io/RVEAtlas/>
 
 AI setup skill: <https://github.com/LeiLi-Uchicago/RVEAtlas_Skill>
 
-## Current Apps and Data Paths
+## Current Datasets
 
-- **FLU Explorer:** Human influenza amino acid and nucleotide variation across subtypes, clades, countries/regions, and collection dates.
-- **RSV Explorer:** RSV A/B clade-aware amino acid variation.
-- **COVID Explorer:** SARS-CoV-2 clade-aware amino acid variation.
-- **AAExplorer:** Universal viewer for NextAA outputs from supported Nextclade3/Nextstrain datasets; current website example uses CHIKV.
+- **FLU:** Human influenza amino acid and nucleotide variation across subtypes, clades, countries/regions, and collection dates.
+- **RSV:** RSV A/B clade-aware amino acid variation.
+- **COVID:** SARS-CoV-2 clade-aware amino acid variation.
+- **CHIKV:** Universal viewer for NextAA outputs from supported Nextclade3/Nextstrain datasets; current website example uses CHIKV.
 
-The Shiny app uses the navbar pathogen and subtype controls to switch between available datasets. Dataset methods and notes are stored in `APP_INFO_FLU.md`, `APP_INFO_RSV.md`, `APP_INFO_COVID.md`, and `APP_INFO_CHIKV.md`. Shared platform-wide update notes are stored in `APP_INFO_PLATFORM.md` and displayed after each pathogen-specific Methods & Info page.
+The Shiny app uses the navbar pathogen and subtype controls to switch between available datasets, with an animated loading overlay for smooth transitions. Only pathogens whose cache is present are selectable; the app can be deployed with any single pathogen (or any subset) and starts cleanly, with the others shown as "Unavailable". Dataset methods and notes are stored in `APP_INFO_FLU.md`, `APP_INFO_RSV.md`, `APP_INFO_COVID.md`, and `APP_INFO_CHIKV.md`. Shared platform-wide update notes are stored in `APP_INFO_PLATFORM.md` and displayed after each pathogen-specific Methods & Info page.
 
 ## Key Features
 
+### Home / Pathogen Chooser
+
+- Landing page with per-pathogen artwork cards, descriptions, and subtype chips, grouped into pathogen-specific and universal-configuration tiers.
+- Cards mark the active dataset as "Viewing" and any pathogen without a cache as "Unavailable".
 
 ### Dataset Insights
 
 - Summarizes total sequences, represented countries, and collection time span.
 - Visualizes sequencing volume over time, regional composition, and subtype or metadata breakdowns.
+- The Year / Year-Month breakdown supports a selectable sub-category (color) and highlights the COVID-19 pandemic window (Mar 2020 – May 2023) as a translucent band.
 
 ### Genetic Clade
 
@@ -47,14 +52,22 @@ The Shiny app uses the navbar pathogen and subtype controls to switch between av
 ### Gene-Wide Landscapes
 
 - **Conservation:** Maps positional Shannon entropy across a gene.
+- **Structural/functional regions:** The entropy plot overlays translucent domain bands (e.g. HA1/HA2, Spike NTD/RBD/fusion peptide/HR1/HR2, RSV F2/p27/F1) defined in `www/structures/gene_regions.tsv`.
 - Variable-site shortcuts can jump directly into the Single Position Explorer.
 
 ### 3D Protein Structure Views
 
-- **Conservation on structure:** Renders the gene product (H1N1 HA on PDB 4JTV) with residues colored by the currently-selected entropy basis (conserved → variable), so conserved cores and variable surfaces are visible in 3D.
-- **Epitope + position mapping:** On the Single Site page, highlights known antigenic sites (H1 Sa/Sb/Ca1/Ca2/Cb) and marks the selected position in red with a residue label.
+Interactive `r3dmol` (3Dmol.js) structure views are available in Amino-Acid mode for the surface antigens of all four pathogens. Internal genes with no bundled structure hide the panel automatically.
+
+- **Structures covered:**
+  - **Influenza HA:** H1N1pdm09 (PDB 4JTV), seasonal H1N1 (6WCR), H3N2 (4HMG), and H5 (2FK0 clade 1, 9NRR clade 2.3.4.4b).
+  - **Influenza NA:** N1 (3NSS) and N2 (4GZO) tetramers.
+  - **RSV F:** postfusion trimer (3RKI), shared by RSV A and B.
+  - **SARS-CoV-2 Spike:** closed prefusion trimer (6VXX).
+- **Conservation on structure:** Colors residues by the currently-selected entropy basis (conserved → variable) with a gradient legend, so conserved cores and variable surfaces are visible in 3D.
+- **Epitope + position mapping:** On the Single Site page, highlights curated antigenic sites for the active gene (e.g. H1 Sa/Sb/Ca1/Ca2/Cb, plus H3/H5/N1/N2, RSV-F, and Spike site sets) with a color-coded legend and marks the selected position in red with a residue label.
 - **View styles:** Surface (default), Cartoon, Stick, or Sphere on both pages.
-- **Config-driven:** Structures, chain maps, and epitope sets live in `www/structures/` (`structure_config.tsv`, `epitopes_h1.tsv`); additional pathogens/genes are added by dropping in a PDB and a config row.
+- **Config-driven:** Structures, chain maps, and epitope sets live in `www/structures/` (`structure_config.tsv` plus per-gene `epitopes_*.tsv`); bundled PDBs are renumbered to the app's HA/NA numbering (see `tools/renumber_h5.py`, `tools/renumber_na.py`). Additional pathogens/genes are added by dropping in a PDB and a config row.
 
 ### Year-Balanced Conservation
 
@@ -137,7 +150,7 @@ FLU raw metadata and count tables should be placed under `data/raw/FLU`. Each su
 data/
 └── raw/
     └── FLU/
-        ├── H1N1/
+        ├── H1N1pdm09/
         │   ├── metadata_merged_annotated.csv
         │   └── count/
         │       ├── HA/
@@ -145,6 +158,7 @@ data/
         │       │   ├── aa_usage_by_NA_clade.csv
         │       │   └── aa_usage_by_Year_Month.csv
         │       └── ...
+        ├── H1N1seasonal/
         ├── H3N2/
         ├── B_VIC/
         ├── B_YAM/
@@ -160,7 +174,9 @@ nt_usage_by_<GROUPING>.csv
 
 For H5NX-style datasets with multiple neuraminidase segments, keep each NA as its own gene folder, for example `count/NA_N1/`, `count/NA_N2/`, ..., `count/NA_N9/`.
 
-RSV, COVID, and CHIKV/AAExplorer data are expected as prebuilt cache assets under `data/cache/<PATHOGEN>/` according to the adapter paths in `global.R`.
+RSV, COVID, and CHIKV/AAExplorer are served through the adapter layer. Their caches under `data/cache/<PATHOGEN>/` (paths defined in `global.R`) can either be shipped prebuilt or built from raw NextAA-style outputs placed under `data/raw/<PATHOGEN>/` (see [Build or Refresh Caches](#5-build-or-refresh-caches)).
+
+Each pathogen's cache is independent, so the app can be deployed with any one pathogen (e.g. only RSV) or any subset; pathogens without a cache are shown as "Unavailable" and cannot be selected.
 
 ### 5. Build or Refresh Caches
 
@@ -178,6 +194,14 @@ source("global.R", local = FALSE)
 ```
 
 Unset `FLUEXPLORER_REBUILD_FLU_CACHE` after the rebuild if you do not want every startup to refresh FLU caches.
+
+For the adapter pathogens (RSV, COVID, CHIKV), any cache that is missing but has raw data present under `data/raw/<PATHOGEN>/` is built automatically at startup. You can also rebuild a pathogen's full cache (DuckDB + metadata + conservation/insights) offline in one step:
+
+```bash
+Rscript tools/build_pathogen_cache.R <FLU|RSV|COVID|CHIKV>
+```
+
+This handles all four pathogens (COVID is delegated to `tools/build_covid_cache.R`), so app launches stay fast instead of recomputing conservation entropy on first load. Conservation-entropy caches for every available pathogen are otherwise refreshed on startup as needed.
 
 By default, DuckDB index creation is skipped to keep cache builds stable on large data. To opt in:
 
@@ -220,12 +244,15 @@ http://127.0.0.1:4055
 ├── global.R                     # Package loading, cache building, adapters, query helpers
 ├── server.R                     # Shiny server logic and interactive analyses
 ├── ui.R                         # Shiny UI, navigation, first-page design, and styling
+├── ha_numbering_review_table.csv # HA position → mature/H-numbering reference map
+├── R/                           # Shared modules (conservation, structure view, adapter cache build)
+├── tools/                       # Cache builders and PDB/region/epitope generators
 ├── docs/                        # Static GitHub Pages website
-├── Learn/                       # Reference UI design used for the latest Home redesign
 ├── www/                         # Static app assets served by Shiny
+│   └── structures/              # PDBs, structure_config.tsv, epitopes_*.tsv, gene_regions.tsv
 └── data/
     ├── raw/                     # User-provided raw metadata and count tables
-    └── cache/                   # Generated or prebuilt app caches
+    └── cache/                   # Generated or prebuilt app caches (one folder per pathogen)
 ```
 
 ## Troubleshooting
