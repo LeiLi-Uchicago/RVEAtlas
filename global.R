@@ -577,6 +577,11 @@ ensure_usage_duckdb_cache <- function(force_rebuild = FORCE_REBUILD_FLU_CACHE) {
 # This includes H5NX and any future influenza subtype folder with metadata.
 SUBTYPES <- discover_flu_subtypes()
 
+# TRUE once FLU globals are populated with real data (from cache or a raw build).
+# Stays FALSE on a cache-only single-pathogen deploy that ships no FLU data, so
+# FLU is presented as an unavailable pathogen instead of crashing startup.
+flu_data_available <- FALSE
+
 if (file.exists(RDS_CACHE)) {
   # ---- FAST PATH: load everything from the pre-built cache ----
   message("Loading data from RDS cache: ", RDS_CACHE)
@@ -621,6 +626,7 @@ if (file.exists(RDS_CACHE)) {
       rm(cache)   # free the wrapper list from memory
       message("RDS cache loaded successfully.")
       cache_loaded <- TRUE
+      flu_data_available <- TRUE
     }
   } else {
     message("RDS cache is outdated. Rebuilding...")
@@ -628,6 +634,32 @@ if (file.exists(RDS_CACHE)) {
   }
 } else {
   cache_loaded <- FALSE
+}
+
+if (!cache_loaded && !raw_metadata_available()) {
+  # ---- EMPTY FLU: no usable cache and no raw metadata to rebuild from. This is
+  # the single-pathogen / cache-only deploy that ships only RSV, COVID, or CHIKV.
+  # Populate empty FLU globals so the app starts with FLU marked unavailable,
+  # instead of dropping into the raw-rebuild path and erroring on absent data.
+  message("FLU cache and raw metadata both absent. Starting with FLU unavailable.")
+  total_raw    <- scales::comma(0)
+  total_parsed <- scales::comma(0)
+  important_pos_df <- data.frame(
+    Gene = character(), Subtype = character(), Position = numeric(),
+    Mutation = character(), Epitope = character(), Clinical_impact = character(),
+    Source = character(), label = character(), stringsAsFactors = FALSE
+  )
+  metadata_summary_stats <- tibble::tibble(
+    Year = numeric(), YearMonth = character(), Group = character(),
+    region = character(), country = character(), n = integer()
+  )
+  total_countries_val    <- 0L
+  time_range_val         <- "NA - NA"
+  metadata_groups        <- character(0)
+  metadata_years         <- numeric(0)
+  metadata_grouping_cols <- character(0)
+  metadata_clade_explorer <- empty_metadata_clade_explorer()
+  cache_loaded <- TRUE
 }
 
 if (!cache_loaded) {
@@ -833,13 +865,17 @@ if (!cache_loaded) {
   # --- STARTUP MEMORY FLUSH ---
   suppressWarnings(rm(all_metadata, metadata_global, meta))
   gc(verbose = FALSE)
+  flu_data_available <- TRUE
 }
 
 if (!exists("metadata_clade_explorer") || is.null(metadata_clade_explorer)) {
   metadata_clade_explorer <- empty_metadata_clade_explorer()
 }
 
-duckdb_cache_ready <- ensure_usage_duckdb_cache(force_rebuild = FALSE)
+# Only touch the FLU DuckDB usage cache when FLU actually has data. Otherwise a
+# cache-only deploy of another pathogen would build an empty FLU DuckDB here,
+# which would make FLU wrongly register as an available pathogen.
+duckdb_cache_ready <- if (isTRUE(flu_data_available)) ensure_usage_duckdb_cache(force_rebuild = FALSE) else FALSE
 
 # ==========================================
 # 2. COORDINATE LOOKUP DATA (Pre-calculated for Performance)
@@ -1367,7 +1403,13 @@ PATHOGEN_ADAPTERS <- list(
     schema = "flu",
     tier = "specific",
     description = "Human and avian influenza, with HA/NA numbering and curated antigenic-site annotation.",
-    subtype_choices = stats::setNames(sort_flu_subtypes(unique(c(metadata_groups, SUBTYPES))), sort_flu_subtypes(unique(c(metadata_groups, SUBTYPES))))
+    # No subtypes when FLU ships no data (cache-only deploy of another pathogen),
+    # so the disabled FLU card doesn't advertise the hardcoded fallback subtypes.
+    subtype_choices = if (isTRUE(flu_data_available)) {
+      stats::setNames(sort_flu_subtypes(unique(c(metadata_groups, SUBTYPES))), sort_flu_subtypes(unique(c(metadata_groups, SUBTYPES))))
+    } else {
+      character(0)
+    }
   ),
   RSV = list(
     id = "RSV",
