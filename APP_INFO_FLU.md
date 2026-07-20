@@ -13,7 +13,11 @@ FLUExplorer is intended for researchers, bioinformaticians, genomic epidemiologi
 
 Data were sourced from GISAID, with all sequences annotated via Nextclade 3. The reference datasets used for each lineage are listed below:
 
-#### H1N1
+#### H1N1seasonal
+
+We built a customized reference based on RU77 (A/USSR/90/1977 | EPI_ISL_66104).
+
+#### H1N1pdm09
 
 | Segment | Nextclade reference dataset |
 |---|---|
