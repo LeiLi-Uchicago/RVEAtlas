@@ -1736,9 +1736,11 @@ server <- function(input, output, session) {
     }
     # Pre-2009 seasonal H1N1 predates Nextclade HA/NA clade nomenclature, so every
     # clade breakdown (HA Clade, NA Clade, short/legacy HA clade) is uninformative
-    # for it -- drop them from the Sub-Category options.
+    # for it -- drop them from the Sub-Category options. The NA subtype breakdown is
+    # likewise uninformative for seasonal H1N1, so drop it as well.
     if (identical(group, "H1N1seasonal")) {
       cols <- cols[!grepl("clade", cols, ignore.case = TRUE)]
+      cols <- setdiff(cols, "NA_subtype")
     }
     cols
   }
