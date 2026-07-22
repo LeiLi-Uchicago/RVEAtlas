@@ -143,7 +143,23 @@ install.packages(c(
 `duckdb` and `DBI` are strongly recommended because the app uses compact DuckDB usage caches to avoid loading large count tables into memory. If `duckdb` is not installed, the app falls back to legacy RDS lazy loading when those cache files are available.
 
 ### 4. Organize Data
+Pre-built data can be downloaded from:
+```text
+https://github.com/LeiLi-Uchicago/RVEAtlas/releases/download/v0.9-alpha/CHIKV.zip
+https://github.com/LeiLi-Uchicago/RVEAtlas/releases/download/v0.9-alpha/COVID.zip
+https://github.com/LeiLi-Uchicago/RVEAtlas/releases/download/v0.9-alpha/FLU.zip
+https://github.com/LeiLi-Uchicago/RVEAtlas/releases/download/v0.9-alpha/RSV.zip
+```
+Download datasets you're interested in, and unzip them under RVEAtlas/data/cache folder:
+data/
+└── cache/
+    └── FLU/
+    └── COVID/
+    └── RSV/
+    └── CHIKV/
+Skip step 5 if you decided to use Pre-built data. 
 
+### 5. Build Caches from raw data (optional)
 FLU raw metadata and count tables should be placed under `data/raw/FLU`. Each subtype should have its own folder:
 
 ```text
@@ -177,8 +193,6 @@ For H5NX-style datasets with multiple neuraminidase segments, keep each NA as it
 RSV, COVID, and CHIKV/AAExplorer are served through the adapter layer. Their caches under `data/cache/<PATHOGEN>/` (paths defined in `global.R`) can either be shipped prebuilt or built from raw NextAA-style outputs placed under `data/raw/<PATHOGEN>/` (see [Build or Refresh Caches](#5-build-or-refresh-caches)).
 
 Each pathogen's cache is independent, so the app can be deployed with any one pathogen (e.g. only RSV) or any subset; pathogens without a cache are shown as "Unavailable" and cannot be selected.
-
-### 5. Build or Refresh Caches
 
 On first startup, the FLU workflow builds:
 
