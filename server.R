@@ -2040,31 +2040,48 @@ server <- function(input, output, session) {
       my_colors["Unknown"] <- "#d3d3d3"
     }
     
-    # Highlight the COVID-19 pandemic window (WHO: pandemic declared Mar 2020,
-    # public-health emergency ended May 2023) as a translucent band + label.
+    # Time-window highlight band. Seasonal H1N1 re-emerged in humans in 1977 and
+    # co-circulated until the 2009 pandemic, so that dataset highlights 1977-2009
+    # instead of the COVID window. Every other dataset highlights the COVID-19
+    # pandemic (WHO: declared Mar 2020, public-health emergency ended May 2023).
     # Both x-axes are categorical (plotly maps categories to 0-based indices), so
     # position the band by the index range of the in-window categories.
+    if (identical(selected_group, "H1N1seasonal")) {
+      hl_label      <- "Seasonal H1N1 re-emergence"
+      hl_fill       <- "rgba(41,128,185,0.10)"                 # blue band
+      hl_text_color <- "#2980b9"
+      hl_start_year <- 1977L; hl_end_year <- 2009L
+      hl_start_key  <- 1977L * 12L + 1L
+      hl_end_key    <- 2009L * 12L + 12L
+    } else {
+      hl_label      <- "COVID-19 pandemic"
+      hl_fill       <- "rgba(192,57,43,0.10)"                 # red band
+      hl_text_color <- "#c0392b"
+      hl_start_year <- 2020L; hl_end_year <- 2023L
+      hl_start_key  <- 2020L * 12L + 3L
+      hl_end_key    <- 2023L * 12L + 5L
+    }
     axis_cats <- if (identical(time_col, "YearMonth")) year_month_levels else sort(unique(as.character(summary_df$plot_time)))
     yr <- suppressWarnings(as.integer(substr(axis_cats, 1, 4)))
     if (identical(time_col, "YearMonth")) {
       mo <- suppressWarnings(as.integer(sub("^[0-9]{4}-", "", axis_cats)))
-      key <- yr * 12L + ifelse(is.na(mo), 6L, mo)               # unknown month -> mid-year
-      in_pandemic <- !is.na(yr) & key >= (2020L * 12L + 3L) & key <= (2023L * 12L + 5L)
+      cat_key <- yr * 12L + ifelse(is.na(mo), 6L, mo)          # unknown month -> mid-year
+      in_window <- !is.na(yr) & cat_key >= hl_start_key & cat_key <= hl_end_key
     } else {
-      in_pandemic <- !is.na(yr) & yr >= 2020L & yr <= 2023L
+      in_window <- !is.na(yr) & yr >= hl_start_year & yr <= hl_end_year
     }
-    pandemic_shapes <- list(); pandemic_annotations <- list()
-    pand_idx <- which(in_pandemic)
-    if (length(pand_idx) > 0) {
-      x0 <- (min(pand_idx) - 1L) - 0.5                          # left edge of first in-window bar
-      x1 <- (max(pand_idx) - 1L) + 0.5                          # right edge of last in-window bar
-      pandemic_shapes <- list(list(
+    highlight_shapes <- list(); highlight_annotations <- list()
+    win_idx <- which(in_window)
+    if (length(win_idx) > 0) {
+      x0 <- (min(win_idx) - 1L) - 0.5                          # left edge of first in-window bar
+      x1 <- (max(win_idx) - 1L) + 0.5                          # right edge of last in-window bar
+      highlight_shapes <- list(list(
         type = "rect", xref = "x", yref = "paper", x0 = x0, x1 = x1, y0 = 0, y1 = 1,
-        fillcolor = "rgba(192,57,43,0.10)", line = list(width = 0), layer = "below"))
-      pandemic_annotations <- list(list(
+        fillcolor = hl_fill, line = list(width = 0), layer = "below"))
+      highlight_annotations <- list(list(
         x = (x0 + x1) / 2, xref = "x", y = 0.98, yref = "paper",
         xanchor = "center", yanchor = "top", showarrow = FALSE,
-        text = "COVID-19 pandemic", font = list(family = "Arial", size = 11, color = "#c0392b"),
+        text = hl_label, font = list(family = "Arial", size = 11, color = hl_text_color),
         bgcolor = "rgba(255,255,255,0.55)", borderpad = 2))
     }
 
@@ -2078,8 +2095,8 @@ server <- function(input, output, session) {
              xaxis = xaxis_config,
              yaxis = list(title = "Sequence Count", tickformat = ","),
              legend = list(title = list(text = "")),
-             shapes = pandemic_shapes,
-             annotations = pandemic_annotations) %>%
+             shapes = highlight_shapes,
+             annotations = highlight_annotations) %>%
       config(displayModeBar = FALSE) %>%
       htmlwidgets::onRender("function(el, x) { setTimeout(function() { if (window.Plotly) Plotly.Plots.resize(el); }, 0); }")
   })
