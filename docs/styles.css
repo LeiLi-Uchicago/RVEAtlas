@@ -1000,19 +1000,78 @@ svg {
   border-bottom: 1px solid var(--line);
 }
 
+/* ---- NextAA pipeline: card-less, wide logo balanced against the copy ---- */
 .pipeline-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  gap: clamp(28px, 4vw, 52px);
+  align-items: center;
+}
+
+.pipeline-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pipeline-logo {
+  width: 100%;
+  height: auto;
+}
+
+.pipeline-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.button.amber-solid {
+  color: var(--white);
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+/* Numbered 2x2 process grid */
+.pipeline-steps {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  max-width: 1080px;
+  gap: 16px 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
 }
 
-.pipeline-card.accent-amber {
-  background: linear-gradient(180deg, var(--white), var(--amber-soft));
+.pipeline-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  counter-increment: step;
+  color: var(--ink-soft);
+  font-weight: 700;
+  text-align: left;
 }
 
-.pipeline-card.accent-purple {
-  background: linear-gradient(180deg, var(--white), var(--purple-soft));
+.pipeline-steps li::before {
+  content: counter(step);
+  position: static;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 5px 12px rgba(189, 116, 7, 0.30);
+}
+
+.pipeline-actions {
+  margin-top: 30px;
 }
 
 .workflow-section {
@@ -1333,6 +1392,11 @@ svg {
   .feature-card,
   .pipeline-card {
     padding: 22px;
+  }
+
+  .pipeline-steps {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .feature-card > h3 + p {

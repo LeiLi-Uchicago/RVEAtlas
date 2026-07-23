@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta
       name="description"
-      content="Respiratory Virus Evolution Atlas is one unified interactive Shiny app, with amino-acid analysis pipelines, for exploring COVID, RSV, human influenza, and Nextclade3-supported pathogens."
+      content="Respiratory Virus Evolution Atlas is one unified interactive Shiny app, with an amino-acid analysis pipeline, for exploring COVID, RSV, human influenza, and Nextclade3-supported pathogens."
     >
     <title>Respiratory Virus Evolution Atlas</title>
     <link rel="canonical" href="https://leili-uchicago.github.io/RVEAtlas/">
@@ -17,7 +17,7 @@
     <meta property="og:title" content="Respiratory Virus Evolution Atlas">
     <meta
       property="og:description"
-      content="One unified interactive Shiny app, with amino-acid analysis pipelines, for exploring COVID, RSV, human influenza, and Nextclade3-supported pathogens."
+      content="One unified interactive Shiny app, with an amino-acid analysis pipeline, for exploring COVID, RSV, human influenza, and Nextclade3-supported pathogens."
     >
     <meta property="og:url" content="https://leili-uchicago.github.io/RVEAtlas/">
     <meta property="og:image" content="https://leili-uchicago.github.io/RVEAtlas/assets/respiratory-virus-evolution-hero.png">
@@ -28,7 +28,7 @@
     <meta name="twitter:title" content="Respiratory Virus Evolution Atlas">
     <meta
       name="twitter:description"
-      content="One unified interactive Shiny app, with amino-acid analysis pipelines, for exploring COVID, RSV, human influenza, and Nextclade3-supported pathogens."
+      content="One unified interactive Shiny app, with an amino-acid analysis pipeline, for exploring COVID, RSV, human influenza, and Nextclade3-supported pathogens."
     >
     <meta name="twitter:image" content="https://leili-uchicago.github.io/RVEAtlas/assets/respiratory-virus-evolution-hero.png">
 
@@ -49,7 +49,7 @@
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#explorers">Explorers</a>
         <a href="#agent-skill">AI Setup</a>
-        <a href="#pipelines">Pipelines</a>
+        <a href="#pipelines">Pipeline</a>
         <a href="#workflow">Data Workflow</a>
         <a href="#about">About</a>
       </nav>
@@ -60,7 +60,7 @@
         <div class="hero-copy">
           <h1 id="hero-title">Respiratory Virus Evolution Atlas</h1>
           <p>
-            One unified Shiny app and reproducible pipelines for tracking
+            One unified Shiny app and a reproducible pipeline for tracking
             amino acid variation, clade evolution, and lineage patterns across respiratory viruses and
             Nextclade3-supported pathogens &mdash; switch pathogens from a single interface.
           </p>
@@ -77,9 +77,8 @@
               <a class="button blue" href="#explorers">CHIKV</a>
             </div>
             <div class="hero-action-row">
-              <span class="hero-action-label">Pipelines:</span>
+              <span class="hero-action-label">Pipeline:</span>
               <a class="button amber" href="#pipelines">NextAA</a>
-              <a class="button purple" href="#pipelines">FLUAA</a>
             </div>
             <div class="hero-action-row">
               <span class="hero-action-label">Local setup:</span>
@@ -88,8 +87,8 @@
           </div>
 
           <div class="source-note">
-            RSV and COVID data are downloaded from <a href="https://nextstrain.org/" target="_blank" rel="noopener noreferrer">Nextstrain</a> and processed by NextAA.
-            Human influenza data are downloaded from <a href="https://gisaid.org/" target="_blank" rel="noopener noreferrer">GISAID</a> and processed by FLUAA.
+            RSV and COVID data are downloaded from <a href="https://nextstrain.org/" target="_blank" rel="noopener noreferrer">Nextstrain</a>, and
+            human influenza data from <a href="https://gisaid.org/" target="_blank" rel="noopener noreferrer">GISAID</a> &mdash; all processed by NextAA.
           </div>
 
         </div>
@@ -391,38 +390,27 @@
       </section>
 
       <section class="section pipelines-section" id="pipelines" aria-labelledby="pipelines-title">
-        <div class="section-heading compact">
-          <h2 id="pipelines-title">Analysis Pipelines</h2>
-          <p>Workflows for transforming global sequence resources into amino acid annotations and clade-aware explorer inputs.</p>
-        </div>
+        
         <div class="pipeline-layout">
-          <article class="pipeline-card accent-amber">
-            <div>
-              <h3>NextAA Pipeline</h3>
-              <p>Processes Nextstrain data for Nextclade3-supported pathogens into standardized amino acid variation outputs for RVE Atlas (its universal and pathogen-specific views).</p>
+          <div class="pipeline-visual">
+            <img class="pipeline-logo" src="assets/nextaa.svg" style="width: 50%;" 
+                 alt="NextAA — pipeline for pathogen data. Processes Nextstrain and GISAID data, powered by Nextflow; standardized AA outputs for RVE Atlas." decoding="async">
+          </div>
+          <div class="pipeline-copy">
+            <div class="section-heading compact">
+              <h2 id="pipelines-title">Analysis Pipeline</h2>
+              <p>The workflow that transforms global sequence resources into amino acid annotations and clade-aware explorer inputs.</p>
             </div>
-            <ol>
-              <li>Download from Nextstrain</li>
-              <li>Standardized processing</li>
-              <li>Amino acid annotation</li>
-              <li>Explorer-ready exports</li>
+            <ol class="pipeline-steps">
+              <li><span>Download from Nextstrain / GISAID (FLU)</span></li>
+              <li><span>Standardized processing</span></li>
+              <li><span>Amino acid annotation</span></li>
+              <li><span>Explorer-ready exports</span></li>
             </ol>
-            <a class="text-link" href="https://github.com/LeiLi-Uchicago/NextAA" target="_blank" rel="noopener noreferrer">View Pipeline</a>
-          </article>
-
-          <article class="pipeline-card accent-purple">
-            <div>
-              <h3>FLUAA Pipeline</h3>
-              <p>Processes GISAID human influenza data into amino acid variation summaries for the influenza view in RVEAtlas.</p>
+            <div class="pipeline-actions">
+              <a class="button amber-solid" href="https://github.com/LeiLi-Uchicago/NextAA" target="_blank" rel="noopener noreferrer">View Pipeline on GitHub</a>
             </div>
-            <ol>
-              <li>Download from GISAID</li>
-              <li>Customized flu processing</li>
-              <li>Amino acid annotation</li>
-              <li>Explorer-ready exports</li>
-            </ol>
-            <a class="text-link" href="https://github.com/LeiLi-Uchicago/FLUAA/" target="_blank" rel="noopener noreferrer">View Pipeline</a>
-          </article>
+          </div>
         </div>
       </section>
 
@@ -433,20 +421,11 @@
         </div>
         <div class="workflow-track" aria-label="Workflow from data source to insight">
           <div class="workflow-row">
-            <div class="workflow-node source">Nextstrain</div>
+            <div class="workflow-node source">Nextstrain/GISAID</div>
             <div class="workflow-line"></div>
             <div class="workflow-node pipeline">NextAA</div>
             <div class="workflow-line"></div>
-            <div class="workflow-node explorer">RVEAtlas &middot; RSV, COVID &amp; CHIKV</div>
-            <div class="workflow-line"></div>
-            <div class="workflow-node insight">Research Context</div>
-          </div>
-          <div class="workflow-row">
-            <div class="workflow-node source">GISAID</div>
-            <div class="workflow-line"></div>
-            <div class="workflow-node pipeline">FLUAA</div>
-            <div class="workflow-line"></div>
-            <div class="workflow-node explorer">RVEAtlas &middot; Influenza</div>
+            <div class="workflow-node explorer">RVEAtlas &middot; RSV, COVID, Influenza &amp; CHIKV</div>
             <div class="workflow-line"></div>
             <div class="workflow-node insight">Research Context</div>
           </div>
@@ -457,7 +436,7 @@
         <div>
           <h2 id="about-title">Built for Pathogen Evolution Research</h2>
           <p>
-            RVE Atlas brings together one public visualization app and processing pipelines so researchers can move
+            RVE Atlas brings together one public visualization app and a processing pipeline so researchers can move
             quickly from clade context to amino acid variation patterns across COVID, RSV, human influenza,
             and Nextstrain pathogens supported by Nextclade3.
           </p>
