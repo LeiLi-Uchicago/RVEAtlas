@@ -51,6 +51,13 @@ ui <- navbarPage(
   ),
   
   header = tags$head(
+    tags$script(async = NA, src = "https://www.googletagmanager.com/gtag/js?id=G-K31GK0LK7T"),
+    tags$script(HTML("
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-K31GK0LK7T');
+    ")),
     tags$link(rel = "shortcut icon", href = "app_icon_round.png"),
     use_waiter(),
     shinyjs::useShinyjs(),
