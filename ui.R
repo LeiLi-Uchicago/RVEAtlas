@@ -51,6 +51,7 @@ ui <- navbarPage(
   ),
   
   header = tags$head(
+    HTML("<!-- Google tag (gtag.js) -->"),
     tags$script(async = NA, src = "https://www.googletagmanager.com/gtag/js?id=G-K31GK0LK7T"),
     tags$script(HTML("
       window.dataLayer = window.dataLayer || [];
